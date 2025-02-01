@@ -28,9 +28,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Backup',
     'rest_framework',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -39,6 +41,28 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 ROOT_URLCONF = 'conf.urls'
@@ -129,7 +153,29 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL =  MEDIA_URL='/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+
+CORS_ORIGIN_WHITELIST = [
+    'http://127.0.0.1:8000',
+    'https://backup-questions-e95023d8185c.herokuapp.com',
+    'http://localhost:3000',
+    'https://scan-app-9206bf041b06.herokuapp.com',
+    
+]
+
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'https://backup-questions-e95023d8185c.herokuapp.com',
+    'http://localhost:3000',
+    'https://scan-app-9206bf041b06.herokuapp.com',
+    
+]
+
+CORS_ALLOWED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'https://backup-questions-e95023d8185c.herokuapp.com',
+    'http://localhost:3000',
+    'https://scan-app-9206bf041b06.herokuapp.com',
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
