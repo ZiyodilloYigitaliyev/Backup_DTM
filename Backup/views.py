@@ -11,12 +11,8 @@ import requests
 
 
 class BackupDataView(APIView):
+    permission_classes = [AllowAny]
     
-    def get_unique_list_id_order(self, list_id, order):
-        while Backup.objects.filter(list_id=list_id, order=order).exists():
-            list_id += 1
-            order += 1
-        return list_id, order
 
     def post(self, request, *args, **kwargs):
         try:
@@ -68,14 +64,17 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            backups = Backup.objects.all()
-            data = [
-                {"list_id": backup.list_id, "true_answer": backup.true_answer, "order": backup.order}
-                for backup in backups
-            ]
-            return Response({"data": data}, status=status.HTTP_200_OK)
+        # Eng oxirgi Backup obyektini olish (agar mavjud bo'lsa)
+            last_backup = Backup.objects.last()
+            if last_backup:
+                return Response({"list_id": last_backup.list_id}, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {"error": "Hech qanday backup topilmadi."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         except Exception as e:
             return Response(
-                {"error": f"An error occurred: {str(e)}"},
+                {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
