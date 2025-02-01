@@ -13,6 +13,13 @@ import requests
 class BackupDataView(APIView):
     permission_classes = [AllowAny]
     
+    def get_unique_list_id_order(self, list_id, order):
+        last_backup = Backup.objects.last()
+        if last_backup and last_backup.list_id is not None:
+            new_list_id = last_backup.list_id + 1
+        else:
+            new_list_id = list_id
+        return new_list_id, order
 
     def post(self, request, *args, **kwargs):
         try:
@@ -37,8 +44,8 @@ class BackupDataView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     
-                    # Duplikat bo‘lsa, list_id va orderni o‘zgartiramiz
-                    #list_id, order = self.get_unique_list_id_order(list_id, order)
+                    # Yangi yordamchi funksiya orqali list_id va order ni yangilaymiz
+                    list_id, order = self.get_unique_list_id_order(list_id, order)
 
                     backup_obj, created = Backup.objects.update_or_create(
                         list_id=list_id,
@@ -64,7 +71,7 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-        # Eng oxirgi Backup obyektini olish (agar mavjud bo'lsa)
+            # Eng oxirgi Backup obyektini olish (agar mavjud bo'lsa)
             last_backup = Backup.objects.last()
             if last_backup:
                 return Response({"list_id": last_backup.list_id}, status=status.HTTP_200_OK)
