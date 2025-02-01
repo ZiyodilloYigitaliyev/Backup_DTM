@@ -11,6 +11,13 @@ import requests
 
 
 class BackupDataView(APIView):
+    
+    def get_unique_list_id_order(self, list_id, order):
+        while Backup.objects.filter(list_id=list_id, order=order).exists():
+            list_id += 1
+            order += 1
+        return list_id, order
+
     def post(self, request, *args, **kwargs):
         try:
             incoming_data = request.data
@@ -34,6 +41,9 @@ class BackupDataView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     
+                    # Duplikat bo‘lsa, list_id va orderni o‘zgartiramiz
+                    list_id, order = self.get_unique_list_id_order(list_id, order)
+
                     backup_obj, created = Backup.objects.update_or_create(
                         list_id=list_id,
                         order=order,
