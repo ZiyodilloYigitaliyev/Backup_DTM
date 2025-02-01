@@ -78,3 +78,34 @@ class BackupDataView(APIView):
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            # URL query parameter orqali list_id olinadi
+            list_id = request.query_params.get('list_id')
+            if not list_id:
+                return Response(
+                    {"error": "O'chirish uchun list_id parametri talab qilinadi."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # list_id bo'yicha backup obyektlarini qidiramiz
+            backups = Backup.objects.filter(list_id=list_id)
+            if not backups.exists():
+                return Response(
+                    {"error": f"list_id {list_id} bilan backup topilmadi."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Topilgan backup obyektlarini o'chiramiz
+            count, _ = backups.delete()
+
+            return Response(
+                {"success": f"{count} ta backup o'chirildi."},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Xatolik yuz berdi: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
