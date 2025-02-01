@@ -17,23 +17,16 @@ class BackupDataView(APIView):
         try:
             incoming_data = request.data
 
-            # Ma'lumot "data" kaliti ostida ro'yxat shaklida kelishi kerak
-            if not isinstance(incoming_data, dict) or "data" not in incoming_data:
+            # Ma'lumotlar to'g'ridan-to'g'ri ro'yxat sifatida kutilmoqda
+            if not isinstance(incoming_data, list):
                 return Response(
-                    {"error": "Payload format must be {'data': [...]}."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            data_list = incoming_data["data"]
-            if not isinstance(data_list, list):
-                return Response(
-                    {"error": "The 'data' value must be a list."},
+                    {"error": "Payload format must be a list of dictionaries."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
             backups_saved = []
             with transaction.atomic():
-                for item in data_list:
+                for item in incoming_data:
                     list_id = item.get("list_id")
                     true_answer = item.get("true_answer")
                     order = item.get("order")
