@@ -38,7 +38,7 @@ class BackupDataView(APIView):
                         )
                     
                     # Duplikat bo‘lsa, list_id va orderni o‘zgartiramiz
-                    list_id, order = self.get_unique_list_id_order(list_id, order)
+                    #list_id, order = self.get_unique_list_id_order(list_id, order)
 
                     backup_obj, created = Backup.objects.update_or_create(
                         list_id=list_id,
