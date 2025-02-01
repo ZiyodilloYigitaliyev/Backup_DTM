@@ -11,13 +11,10 @@ import requests
 
 
 class BackupDataView(APIView):
-    permission_classes = [AllowAny]
-
     def post(self, request, *args, **kwargs):
         try:
             incoming_data = request.data
 
-            # Ma'lumotlar to'g'ridan-to'g'ri ro'yxat sifatida kutilmoqda
             if not isinstance(incoming_data, list):
                 return Response(
                     {"error": "Payload format must be a list of dictionaries."},
@@ -31,14 +28,12 @@ class BackupDataView(APIView):
                     true_answer = item.get("true_answer")
                     order = item.get("order")
                     
-                    # Tekshiruv: majburiy maydonlar bo'lishi kerak
-                    if list_id is None or true_answer is None or order is None:
+                    if list_id is None or order is None:
                         return Response(
-                            {"error": "list_id, true_answer, and order are required."},
+                            {"error": "list_id and order are required."},
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     
-                    # Agar mavjud yozuv bo'lsa update qiladi, aks holda yangi yozuv yaratadi.
                     backup_obj, created = Backup.objects.update_or_create(
                         list_id=list_id,
                         order=order,
@@ -55,7 +50,6 @@ class BackupDataView(APIView):
                 {"success": "Backup data saved successfully.", "data": backups_saved},
                 status=status.HTTP_201_CREATED
             )
-
         except Exception as e:
             return Response(
                 {"error": f"An error occurred: {str(e)}"},
@@ -65,29 +59,13 @@ class BackupDataView(APIView):
     def get(self, request, *args, **kwargs):
         try:
             backups = Backup.objects.all()
-            data = []
-            for backup in backups:
-                data.append({
-                    "list_id": backup.list_id,
-                    "true_answer": backup.true_answer,
-                    "order": backup.order,
-                })
+            data = [
+                {"list_id": backup.list_id, "true_answer": backup.true_answer, "order": backup.order}
+                for backup in backups
+            ]
             return Response({"data": data}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {"error": f"An error occurred: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-    # Agar sizga unique yoki keyingi qiymat kerak bo'lsa, quyidagi yordamchi funksiyalarni qo'shishingiz mumkin.
-    def _get_unique_value(self, field_name, current_value):
-        filter_kwargs = {field_name: current_value}
-        if Backup.objects.filter(**filter_kwargs).exists():
-            max_value = Backup.objects.aggregate(max_val=Max(field_name))['max_val'] or current_value
-            return max_value + 1
-        else:
-            return current_value
-
-    def _get_next_value(self, field_name):
-        max_value = Backup.objects.aggregate(max_val=Max(field_name))['max_val']
-        return (max_value + 1) if max_value is not None else 1
