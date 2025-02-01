@@ -20,10 +20,6 @@ class BackupDataView(APIView):
             for backup in backups:
                 data.append({
                     "list_id": backup.list_id,
-                    "category": backup.category,
-                    "subject": backup.subject,
-                    "text": backup.text,
-                    "options": backup.options,
                     "true_answer": backup.true_answer,
                     "order": backup.order,
                 })
@@ -52,14 +48,10 @@ class BackupDataView(APIView):
             backups_saved = []
             with transaction.atomic():
                 for item in data_list:
-                    # Ma'lumot maydonlarini olish (agar mavjud bo'lmasa, keyinchalik avtomatik qiymat beramiz)
+                    # Faqat list_id, order va true_answer ni olish
                     orig_list_id = item.get("list_id")
                     orig_order = item.get("order")
-                    category   = item.get("category", "")
-                    subject    = item.get("subject", "")
-                    text       = item.get("text", "")
-                    options    = item.get("options", "")
-                    true_answer= item.get("true_answer", "")
+                    true_answer = item.get("true_answer", "")
 
                     # Agar list_id yoki order kiritilmagan bo'lsa, ularni bazadagi eng katta qiymatdan birga oshirib aniqlaymiz
                     if orig_list_id is None:
@@ -72,24 +64,21 @@ class BackupDataView(APIView):
                     else:
                         order = self._get_unique_value("order", orig_order)
 
-                    # Yangi yozuvni yaratamiz
+                    # Yangi yozuvni yaratamiz (faqat kerakli maydonlar bilan)
                     backup_obj = Backup.objects.create(
                         list_id=list_id,
                         order=order,
-                        category=category,
-                        subject=subject,
-                        text=text,
-                        options=options,
                         true_answer=true_answer,
                     )
                     backups_saved.append({
                         "list_id": backup_obj.list_id,
+                        "true_answer": backup_obj.true_answer,
                         "order": backup_obj.order,
                         "created": True
                     })
 
             return Response(
-                {"success": "Backup Malumotlari Muvaffaqiyatli Saqlandi"},
+                {"success": "Backup malumotlari muvaffaqiyatli saqlandi", "data": backups_saved},
                 status=status.HTTP_201_CREATED
             )
 
@@ -118,10 +107,6 @@ class BackupDataView(APIView):
             for backup in backups:
                 payload.append({
                     "list_id": backup.list_id,
-                    "category": backup.category,
-                    "subject": backup.subject,
-                    "text": backup.text,
-                    "options": backup.options,
                     "true_answer": backup.true_answer,
                     "order": backup.order,
                 })
