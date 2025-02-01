@@ -71,20 +71,19 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            # Eng oxirgi Backup obyektini olish (agar mavjud bo'lsa)
+        # Eng oxirgi Backup obyektini olish (agar mavjud bo'lsa)
             last_backup = Backup.objects.last()
             if last_backup:
                 return Response({"list_id": last_backup.list_id}, status=status.HTTP_200_OK)
             else:
-                return Response(
-                    {"error": "Hech qanday backup topilmadi."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+            # Hech qanday backup topilmasa, 404 emas, null qaytariladi
+                return Response({"list_id": None}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
     
     def delete(self, request, *args, **kwargs):
         try:
