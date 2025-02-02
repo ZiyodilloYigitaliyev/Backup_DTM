@@ -7,10 +7,9 @@ from sympy import Max
 from rest_framework.views import APIView
 from rest_framework import status
 import requests
-# Create your views here.
-
 
 class BackupDataView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
         try:
             incoming_data = request.data
