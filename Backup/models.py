@@ -4,5 +4,5 @@ from django.db import models
 
 class Backup(models.Model):
     list_id = models.IntegerField(null=False, blank=True)
-    true_answer = models.CharField(max_length=150, null=True, blank=True)
-    order = models.IntegerField(null=False, blank=True)
+    true_answer = models.JSONField(default=list)
+    order = models.JSONField(default=list)
