@@ -12,14 +12,6 @@ import requests
 
 class BackupDataView(APIView):
     permission_classes = [AllowAny]
-    
-    def get_unique_list_id_order(self, list_id, order):
-        last_backup = Backup.objects.last()
-        if last_backup and last_backup.list_id is not None:
-            new_list_id = last_backup.list_id + 1
-        else:
-            new_list_id = list_id
-        return new_list_id, order
 
     def post(self, request, *args, **kwargs):
         try:
@@ -31,26 +23,35 @@ class BackupDataView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # Guruhlash: har bir list_id uchun true_answer va order ni yig'amiz
+            grouped_data = {}
+            for item in incoming_data:
+                list_id = item.get("list_id")
+                true_answer = item.get("true_answer")
+                order = item.get("order")
+                
+                if list_id is None or order is None:
+                    return Response(
+                        {"error": "list_id and order are required."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                if list_id not in grouped_data:
+                    grouped_data[list_id] = {"true_answer": [], "order": []}
+                
+                grouped_data[list_id]["true_answer"].append(true_answer)
+                grouped_data[list_id]["order"].append(order)
+            
             backups_saved = []
             with transaction.atomic():
-                for item in incoming_data:
-                    list_id = item.get("list_id")
-                    true_answer = item.get("true_answer")
-                    order = item.get("order")
-                    
-                    if list_id is None or order is None:
-                        return Response(
-                            {"error": "list_id and order are required."},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    
-                    # Yangi yordamchi funksiya orqali list_id va order ni yangilaymiz
-                    list_id, order = self.get_unique_list_id_order(list_id, order)
-
+                # Har bir guruh bo'yicha yozuvni update_or_create qilamiz
+                for list_id, values in grouped_data.items():
                     backup_obj, created = Backup.objects.update_or_create(
                         list_id=list_id,
-                        order=order,
-                        defaults={"true_answer": true_answer}
+                        defaults={
+                            "true_answer": values["true_answer"],
+                            "order": values["order"]
+                        }
                     )
                     backups_saved.append({
                         "list_id": backup_obj.list_id,
@@ -71,37 +72,36 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-        # Eng oxirgi Backup obyektini olish (agar mavjud bo'lsa)
-            last_backup = Backup.objects.last()
+            # Oxirgi list_id ni olish: Backup obyektlarini list_id bo‘yicha kamayish tartibida saralash
+            last_backup = Backup.objects.order_by("-list_id").first()
             if last_backup:
                 return Response({"list_id": last_backup.list_id}, status=status.HTTP_200_OK)
             else:
-            # Hech qanday backup topilmasa, 404 emas, null qaytariladi
+                # Agar backuplar mavjud bo‘lmasa, None yoki boshqa default qiymat qaytarish mumkin
                 return Response({"list_id": None}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
-                {"error": f"Xatolik yuz berdi: {str(e)}"},
+                {"error": f"An error occurred: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    
+
     def delete(self, request, *args, **kwargs):
         try:
-            # Barcha Backup obyektlarini o'chirish
-            backups = Backup.objects.all()
-            if not backups.exists():
+            with transaction.atomic():
+                backups = Backup.objects.all()
+                if not backups.exists():
+                    return Response(
+                        {"error": "No backup exists to delete."},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                count, _ = backups.delete()
                 return Response(
-                    {"error": "O'chirish uchun hech qanday backup mavjud emas."},
-                    status=status.HTTP_404_NOT_FOUND
+                    {"success": f"{count} backups deleted."},
+                    status=status.HTTP_200_OK
                 )
-
-            count, _ = backups.delete()
-            return Response(
-                {"success": f"{count} ta backup o'chirildi."},
-                status=status.HTTP_200_OK
-            )
         except Exception as e:
             return Response(
-                {"error": f"Xatolik yuz berdi: {str(e)}"},
+                {"error": f"An error occurred during deletion: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
