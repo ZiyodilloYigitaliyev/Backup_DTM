@@ -1,7 +1,6 @@
 import os
 import csv
 import uuid
-import json
 import logging
 from io import StringIO
 from django.db import transaction
@@ -9,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from .models import ProcessedTest, ProcessedTestResult
+from .models import ProcessedTest
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +34,14 @@ def load_coordinates(csv_path):
         return set()
 
 def validate_coordinates(bubbles, coordinates_set):
-    """ Kiritilgan koordinatalarni asosiy CSV fayldagi ma'lumotlar bilan solishtiradi. """
-    return all(coord in coordinates_set for coord in bubbles)
+    """ Kiritilgan koordinatalarni asosiy CSV fayldagi ma'lumotlar bilan solishtiradi.
+        Agar koordinatalar ±6 oralig'ida bo'lsa, haqiqiy deb hisoblanadi. """
+    
+    def is_nearby(coord, coordinates_set, threshold=6):
+        x, y = coord
+        return any(abs(x - cx) <= threshold and abs(y - cy) <= threshold for cx, cy in coordinates_set)
+    
+    return all(is_nearby(coord, coordinates_set) for coord in bubbles)
 
 def classify_coordinates(bubbles):
     """ Koordinatalarni `student_id`, `phone_number` yoki `bubbles` sifatida tasniflaydi. """
@@ -89,6 +94,7 @@ class ProcessImageView(APIView):
             
             with transaction.atomic():
                 processed_test = ProcessedTest.objects.create(
+                    student_id=student_id_coords,
                     phone_number=phone_number_coords,
                     bubbles=bubble_coords,
                     image_url=image_url
