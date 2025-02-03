@@ -92,7 +92,7 @@ class ProcessImageView(APIView):
 
             # Koordinatalarni tasniflash
             try:
-                student_id_coords, phone_number_coords, bubble_coords = validate_coordinates(bubbles)
+                student_id_coords, phone_number_coords, bubble_coords = validate_coordinates(coordinates_set=coordinates_set, bubbles=bubbles)
             except Exception as e:
                 logger.error("Koordinatalarni tasniflashda xato: %s", str(e))
                 return Response({"error": "Koordinatalarni tasniflashda xato"}, status=status.HTTP_400_BAD_REQUEST)
