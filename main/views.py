@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.csv')
+PHONE_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.csv')
 
 def load_coordinates(csv_path):
     """ CSV faylni yuklab, koordinatalarni o'qib dictionary sifatida qaytaradi. """
@@ -43,19 +44,12 @@ def validate_coordinates(bubbles, coordinates_set):
     
     return all(is_nearby(coord, coordinates_set) for coord in bubbles)
 
-def classify_coordinates(bubbles):
-    """ Koordinatalarni `student_id`, `phone_number` yoki `bubbles` sifatida tasniflaydi. """
-    student_id_coords, phone_number_coords, bubble_coords = [], [], []
+# def classify_coordinates(bubbles):
+#     student_id_coords = bubbles[:]
+#     phone_number_coords = bubbles[:]
+#     bubble_coords = bubbles[:]
     
-    for x, y in bubbles:
-        if 0.1 <= x <= 9.6:
-            student_id_coords.append((x, y))
-        elif 0.1 <= x <= 9.9:
-            phone_number_coords.append((x, y))
-        else:
-            bubble_coords.append((x, y))
-    
-    return student_id_coords, phone_number_coords, bubble_coords
+#     return student_id_coords, phone_number_coords, bubble_coords
 
 class ProcessImageView(APIView):
     permission_classes = [AllowAny]
@@ -98,7 +92,7 @@ class ProcessImageView(APIView):
 
             # Koordinatalarni tasniflash
             try:
-                student_id_coords, phone_number_coords, bubble_coords = classify_coordinates(bubbles)
+                student_id_coords, phone_number_coords, bubble_coords = validate_coordinates(bubbles)
             except Exception as e:
                 logger.error("Koordinatalarni tasniflashda xato: %s", str(e))
                 return Response({"error": "Koordinatalarni tasniflashda xato"}, status=status.HTTP_400_BAD_REQUEST)
@@ -132,4 +126,3 @@ class ProcessImageView(APIView):
         except Exception as e:
             logger.error("Server xatosi: %s", str(e))
             return Response({"error": "Ichki server xatosi"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
