@@ -65,33 +65,50 @@ class ProcessImageView(APIView):
         try:
             csv_file = request.FILES.get('file')
             image_url = request.data.get('img_url')
+
             if not csv_file:
+                logger.error("CSV fayl yuklanmagan")
                 return Response({"error": "CSV fayl yuklanmagan"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            csv_data = csv_file.read().decode('utf-8')
-            csv_io = StringIO(csv_data)
-            reader = csv.DictReader(csv_io)
-            
+
+            try:
+                csv_data = csv_file.read().decode('utf-8')
+                csv_io = StringIO(csv_data)
+                reader = csv.DictReader(csv_io)
+            except Exception as e:
+                logger.error("CSV faylni o‘qishda xato: %s", str(e))
+                return Response({"error": "CSV faylni o‘qishda xato"}, status=status.HTTP_400_BAD_REQUEST)
+
             bubbles = []
             for row in reader:
                 try:
                     x = float(row.get('x_coord'))
                     y = float(row.get('y_coord'))
                     bubbles.append((x, y))
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as e:
+                    logger.warning("Noto‘g‘ri koordinata: %s, Xato: %s", row, str(e))
                     continue
-            
+
+            logger.info("CSV fayldan %d ta koordinata yuklandi", len(bubbles))
+
             # Asosiy CSV fayldagi ma'lumotlarni yuklash va tekshirish
             coordinates_set = load_coordinates(COORDINATES_PATH)
             if not validate_coordinates(bubbles, coordinates_set):
+                logger.error("CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan")
                 return Response({"error": "CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan"}, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # Koordinatalarni tasniflash
-            student_id_coords, phone_number_coords, bubble_coords = classify_coordinates(bubbles)
-            
+            try:
+                student_id_coords, phone_number_coords, bubble_coords = classify_coordinates(bubbles)
+            except Exception as e:
+                logger.error("Koordinatalarni tasniflashda xato: %s", str(e))
+                return Response({"error": "Koordinatalarni tasniflashda xato"}, status=status.HTTP_400_BAD_REQUEST)
+
             if not student_id_coords:
-                return Response({"error": "Fuck You Ziyodillo"}, status=status.HTTP_400_BAD_REQUEST)
-            
+                logger.error("Student ID aniqlanmadi")
+                return Response({"error": "Student ID aniqlanmadi"}, status=status.HTTP_400_BAD_REQUEST)
+
+            logger.info("Aniqlangan Student ID: %s", student_id_coords)
+
             with transaction.atomic():
                 processed_test = ProcessedTest.objects.create(
                     student_id=student_id_coords,
@@ -99,16 +116,20 @@ class ProcessImageView(APIView):
                     bubbles=bubble_coords,
                     image_url=image_url
                 )
-                
-                return Response({
-                    "message": "Ma'lumotlar saqlandi",
-                    "transaction_id": transaction_id,
-                    "details": {
-                        "student_id": student_id_coords,
-                        "phone_number": phone_number_coords,
-                        "answers_count": len(bubble_coords)
-                    }
-                }, status=status.HTTP_201_CREATED)
+
+            logger.info("Ma'lumotlar muvaffaqiyatli saqlandi. Transaction ID: %s", transaction_id)
+
+            return Response({
+                "message": "Ma'lumotlar saqlandi",
+                "transaction_id": transaction_id,
+                "details": {
+                    "student_id": student_id_coords,
+                    "phone_number": phone_number_coords,
+                    "answers_count": len(bubble_coords)
+                }
+            }, status=status.HTTP_201_CREATED)
+
         except Exception as e:
             logger.error("Server xatosi: %s", str(e))
             return Response({"error": "Ichki server xatosi"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
