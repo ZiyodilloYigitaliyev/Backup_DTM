@@ -1,6 +1,7 @@
 import os
 import csv
 import uuid
+import json
 import logging
 from io import StringIO
 from django.db import transaction
@@ -12,14 +13,44 @@ from .models import ProcessedTest, ProcessedTestResult
 
 logger = logging.getLogger(__name__)
 
-def is_within_tolerance(coord1, coord2, tolerance=5):
-    return abs(coord1[0] - coord2[0]) <= tolerance and abs(coord1[1] - coord2[1]) <= tolerance
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.csv')
 
-def extract_data_from_bubbles(bubbles, reference_coords):
-    for key, coord_list in reference_coords.items():
-        if any(is_within_tolerance(coord, bubble) for bubble in bubbles for coord in coord_list):
-            return key
-    return None
+def load_coordinates(csv_path):
+    """ CSV faylni yuklab, koordinatalarni o'qib dictionary sifatida qaytaradi. """
+    data = set()
+    try:
+        with open(csv_path, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)  # Sarlavhani o'tkazib yuborish
+            for row in reader:
+                try:
+                    x, y = float(row[0]), float(row[1])
+                    data.add((x, y))
+                except (ValueError, IndexError):
+                    continue
+        return data
+    except FileNotFoundError:
+        logger.error("CSV fayl topilmadi: %s", csv_path)
+        return set()
+
+def validate_coordinates(bubbles, coordinates_set):
+    """ Kiritilgan koordinatalarni asosiy CSV fayldagi ma'lumotlar bilan solishtiradi. """
+    return all(coord in coordinates_set for coord in bubbles)
+
+def classify_coordinates(bubbles):
+    """ Koordinatalarni `student_id`, `phone_number` yoki `bubbles` sifatida tasniflaydi. """
+    student_id_coords, phone_number_coords, bubble_coords = [], [], []
+    
+    for x, y in bubbles:
+        if 0.1 <= x <= 9.6:
+            student_id_coords.append((x, y))
+        elif 0.1 <= x <= 9.9:
+            phone_number_coords.append((x, y))
+        else:
+            bubble_coords.append((x, y))
+    
+    return student_id_coords, phone_number_coords, bubble_coords
 
 class ProcessImageView(APIView):
     permission_classes = [AllowAny]
@@ -28,67 +59,50 @@ class ProcessImageView(APIView):
         transaction_id = str(uuid.uuid4())[:8]
         try:
             csv_file = request.FILES.get('file')
-            img_url = request.data.get('img_url', '').strip()
-            
+            image_url = request.data.get('img_url')
             if not csv_file:
-                return Response({"error": "CSV fayl taqdim etilishi shart"}, status=status.HTTP_400_BAD_REQUEST)
-
+                return Response({"error": "CSV fayl yuklanmagan"}, status=status.HTTP_400_BAD_REQUEST)
+            
             csv_data = csv_file.read().decode('utf-8')
             csv_io = StringIO(csv_data)
             reader = csv.DictReader(csv_io)
-
+            
             bubbles = []
-            student_id_coords = {}
-            phone_number_coords = {}
-            answers = {}
-
             for row in reader:
-                x, y = int(row.get('x_coord', 0)), int(row.get('y_coord', 0))
-                data_type = row.get('data_type', '').strip().lower()
-                value = row.get('value', '').strip()
-
-                if data_type == 'bubble':
+                try:
+                    x = float(row.get('x_coord'))
+                    y = float(row.get('y_coord'))
                     bubbles.append((x, y))
-                elif data_type == 'student_id' and value:
-                    student_id_coords.setdefault(value, []).append((x, y))
-                elif data_type == 'phone_number' and value:
-                    phone_number_coords.setdefault(value, []).append((x, y))
-                elif data_type == 'answer':
-                    question = row.get('question', '').strip()
-                    if question:
-                        answers[question] = value
-
-            student_id = extract_data_from_bubbles(bubbles, student_id_coords)
-            phone_number = extract_data_from_bubbles(bubbles, phone_number_coords)
-
-            if not student_id:
-                return Response({"error": "Student ID aniqlanmadi"}, status=status.HTTP_400_BAD_REQUEST)
-
+                except (ValueError, TypeError):
+                    continue
+            
+            # Asosiy CSV fayldagi ma'lumotlarni yuklash va tekshirish
+            coordinates_set = load_coordinates(COORDINATES_PATH)
+            if not validate_coordinates(bubbles, coordinates_set):
+                return Response({"error": "CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Koordinatalarni tasniflash
+            student_id_coords, phone_number_coords, bubble_coords = classify_coordinates(bubbles)
+            
+            if not student_id_coords:
+                return Response({"error": "Fuck You Ziyodillo"}, status=status.HTTP_400_BAD_REQUEST)
+            
             with transaction.atomic():
                 processed_test = ProcessedTest.objects.create(
-                    student_id=student_id,
-                    phone_number=phone_number,
-                    img_url=img_url,
-                    bubbles=bubbles
+                    phone_number=phone_number_coords,
+                    bubbles=bubble_coords,
+                    image_url=image_url
                 )
                 
-                for question, answer in answers.items():
-                    ProcessedTestResult.objects.create(
-                        student=processed_test,
-                        student_answer={question: answer},
-                        is_correct=True, 
-                        score=1
-                    )
-            
-            return Response({
-                "message": "Ma'lumotlar saqlandi",
-                "transaction_id": transaction_id,
-                "details": {
-                    "student_id": student_id,
-                    "phone_number": phone_number,
-                    "answers_count": len(answers)
-                }
-            }, status=status.HTTP_201_CREATED)
+                return Response({
+                    "message": "Ma'lumotlar saqlandi",
+                    "transaction_id": transaction_id,
+                    "details": {
+                        "student_id": student_id_coords,
+                        "phone_number": phone_number_coords,
+                        "answers_count": len(bubble_coords)
+                    }
+                }, status=status.HTTP_201_CREATED)
         except Exception as e:
-            logger.error(f"Xatolik yuz berdi: {e}")
+            logger.error("Server xatosi: %s", str(e))
             return Response({"error": "Ichki server xatosi"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
