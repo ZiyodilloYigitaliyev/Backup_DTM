@@ -99,7 +99,7 @@ class ProcessImageView(APIView):
         transaction_id = str(uuid.uuid4())[:8]
         try:
             csv_file = request.FILES.get('file')
-            image_url = request.data.get('image_url')
+            image_url = request.data.get('img_url')
             if not csv_file or image_url:
                 return Response({"error": "CSV fayl yoki img_url Maydoni Bo'sh Kelmoqda"}, status=status.HTTP_400_BAD_REQUEST)
             try:
