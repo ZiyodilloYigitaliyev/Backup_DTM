@@ -1,23 +1,16 @@
-import os
 import csv
+import io
 import uuid
 import logging
-import io
-from io import StringIO
-from django.db import transaction
+from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from .models import ProcessedTest
 
 logger = logging.getLogger(__name__)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Student ID uchun alohida CSV fayl (masalan, 'student_id.csv')
-STUDENT_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.csv')
-# Phone Number uchun alohida CSV fayl (masalan, 'phone_number.csv')
-PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/phone_number.csv')
+STUDENT_COORDINATES_PATH = "student_coordinates.csv"  # Student ID CSV manzili
 
 def load_coordinates(csv_path):
     """
@@ -25,14 +18,18 @@ def load_coordinates(csv_path):
     """
     data = set()
     try:
-        with open(csv_path, 'r') as file:
+        with open(csv_path, 'r', encoding="utf-8") as file:
             reader = csv.reader(file)
-            next(reader)  # Sarlavhani o'tkazib yuborish
+            next(reader, None)  # Sarlavhani o'tkazib yuborish
             for row in reader:
+                if len(row) < 2:  # Agar noto‘g‘ri qatorda kam element bo‘lsa
+                    continue
                 try:
-                    x, y = float(row[0]), float(row[1])
-                    data.add((x, y))
-                except (ValueError, IndexError):
+                    x, y = row[0].strip(), row[1].strip()
+                    if x and y:  # Bo‘sh bo‘lmagan qiymatlarni tekshirish
+                        data.add((int(x), int(y)))
+                except ValueError:
+                    logger.warning("Noto‘g‘ri koordinata: %s", row)
                     continue
         return data
     except FileNotFoundError:
@@ -48,17 +45,18 @@ def validate_coordinates(bubbles, coordinates_set, threshold=6):
     def is_nearby(coord, coordinates_set):
         x, y = coord
         return any(abs(x - cx) <= threshold and abs(y - cy) <= threshold for cx, cy in coordinates_set)
-    
+
     return all(is_nearby(coord, coordinates_set) for coord in bubbles)
 
 def classify_coordinates(bubbles):
+    """
+    Koordinatalarni `student_id`, `phone_number` yoki `bubbles` sifatida tasniflaydi.
+    """
+    bubbles = list(bubbles)  # To‘plamni ro‘yxatga o‘tkazish
     student_id_coords = bubbles[:2]
     phone_number_coords = bubbles[2:9]
-    bubble_coords = bubbles[9:]
+    bubble_coords = bubbles[9:] if len(bubbles) > 9 else []
 
-    if not bubble_coords:
-        bubble_coords = []
-    
     return student_id_coords, phone_number_coords, bubble_coords
 
 class ProcessImageView(APIView):
@@ -66,95 +64,42 @@ class ProcessImageView(APIView):
 
     def post(self, request, *args, **kwargs):
         transaction_id = str(uuid.uuid4())[:8]
+
+        # CSV faylni olish
+        csv_file = request.FILES.get('file')
+        if not csv_file:
+            logger.error("CSV fayl yuklanmagan")
+            return Response({"error": "CSV fayl yuklanmagan"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            csv_file = request.FILES.get('file')
-            image_url = request.data.get('img_url')
-
-            decoder_file = io.StringIO(csv_file.read().decode("utf-8"))
-            reader = csv.reader(decoder_file)
-
-            coordinates_set = set()
-
-            if not csv_file:
-                logger.error("CSV fayl yuklanmagan")
-                return Response({"error": "CSV fayl yuklanmagan"}, status=status.HTTP_400_BAD_REQUEST)
-
-            try:
-                csv_data = csv_file.read().decode('utf-8')
-                csv_io = StringIO(csv_data)
-                reader = csv.DictReader(csv_io)
-            except Exception as e:
-                logger.error("CSV faylni o‘qishda xato: %s", str(e))
-                return Response({"error": "CSV faylni o‘qishda xato"}, status=status.HTTP_400_BAD_REQUEST)
-
-            for row in reader:
-                if len(row) >= 2:
-                    try:
-                    # Avval float qiymatlarni int ga o'zgartirayotganimizni ta'minlash
-                        x = int(row[0].strip()) if row[0].strip() else None
-                        y = int(row[1].strip()) if row[1].strip() else None
-                        if x is not None and y is not None:
-                            coordinates_set.add((x, y))
-
-                    except (ValueError, TypeError) as e:
-                        logger.warning("Noto‘g‘ri koordinata: %s, Xato: %s", row, str(e))
-                        continue
-
-            logger.info("CSV fayldan %d ta koordinata yuklandi", len(coordinates_set))
-
-            # Asosiy CSV fayldagi (barcha) koordinatalarni validatsiya qilish
-            # (agar kerak bo'lsa; bu yerda butun fayl uchun umumiy validatsiyani amalga oshiramiz)
-            all_coordinates_set = load_coordinates(STUDENT_COORDINATES_PATH)  # yoki boshqa mos CSV
-            if not validate_coordinates(coordinates_set, all_coordinates_set):
-                logger.error("CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan")
-                return Response({"error": "CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Koordinatalarni tasniflash (indeks bo'yicha ajratish)
-            try:
-                student_id_coords, phone_number_coords, bubble_coords = validate_coordinates(coordinates_set=all_coordinates_set, bubbles=bubble_coords)
-            except Exception as e:
-                logger.error("Koordinatalarni tasniflashda xato: %s", str(e))
-                return Response({"error": "Koordinatalarni tasniflashda xato"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Student ID koordinatalarini alohida CSV fayldagi ma'lumotlar bilan tekshirish
-            student_coordinates_set = load_coordinates(STUDENT_COORDINATES_PATH)
-            if not validate_coordinates(student_id_coords, student_coordinates_set):
-                logger.error("Student ID koordinatalari CSV faylidagi ma'lumotlarga mos kelmadi")
-                return Response({"error": "Student ID koordinatalari noto‘g‘ri"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Phone Number koordinatalarini alohida CSV fayldagi ma'lumotlar bilan tekshirish
-            phone_coordinates_set = load_coordinates(PHONE_COORDINATES_PATH)
-            if not validate_coordinates(phone_number_coords, phone_coordinates_set):
-                logger.error("Phone Number koordinatalari CSV faylidagi ma'lumotlarga mos kelmadi")
-                return Response({"error": "Phone Number koordinatalari noto‘g‘ri"}, status=status.HTTP_400_BAD_REQUEST)
-
-            if not student_id_coords:
-                logger.error("Student ID aniqlanmadi")
-                return Response({"error": "Student ID aniqlanmadi"}, status=status.HTTP_400_BAD_REQUEST)
-
-            logger.info("Aniqlangan Student ID: %s", student_id_coords)
-            logger.info("Aniqlangan Phone Number: %s", phone_number_coords)
-
-            with transaction.atomic():
-                processed_test = ProcessedTest.objects.create(
-                    student_id=student_id_coords,
-                    phone_number=phone_number_coords,
-                    bubbles=bubble_coords,
-                    image_url=image_url
-                )
-
-            logger.info("Ma'lumotlar muvaffaqiyatli saqlandi. Transaction ID: %s", transaction_id)
-
-            return Response({
-                "message": "Ma'lumotlar saqlandi",
-                "transaction_id": transaction_id,
-                "details": {
-                    "student_id": student_id_coords,
-                    "phone_number": phone_number_coords,
-                    "answers_count": len(bubble_coords)
-                }
-            }, status=status.HTTP_201_CREATED)
-
+            csv_data = csv_file.read().decode('utf-8')
+            csv_io = io.StringIO(csv_data)
+            reader = csv.reader(csv_io)
+            next(reader, None)  # Sarlavhani o'tkazib yuborish
         except Exception as e:
-            logger.error("Server xatosi: %s", str(e))
-            return Response({"error": "Ichki server xatosi"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error("CSV faylni o‘qishda xato: %s", str(e))
+            return Response({"error": "CSV faylni o‘qishda xato"}, status=status.HTTP_400_BAD_REQUEST)
+
+        coordinates_set = set()
+        for row in reader:
+            if len(row) < 2:
+                continue
+            try:
+                x, y = row[0].strip(), row[1].strip()
+                if x and y:
+                    coordinates_set.add((int(x), int(y)))
+            except ValueError:
+                logger.warning("Noto‘g‘ri koordinata: %s", row)
+                continue
+
+        logger.info("CSV fayldan %d ta koordinata yuklandi", len(coordinates_set))
+
+        # Asosiy CSV fayldagi koordinatalarni yuklash
+        all_coordinates_set = load_coordinates(STUDENT_COORDINATES_PATH)
+
+        if not validate_coordinates(coordinates_set, all_coordinates_set):
+            logger.error("CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan")
+            return Response({"error": "CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Koordinatalarni tasniflash
+        student_id_coords, phone_number_coords, bubble_coords = classify_coordinates(coordinates_set)
