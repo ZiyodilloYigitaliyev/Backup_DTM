@@ -2,7 +2,6 @@ import csv
 import io
 import uuid
 import logging
-from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -39,8 +38,6 @@ def load_coordinates(csv_path):
 def validate_coordinates(bubbles, coordinates_set, threshold=6):
     """
     Kiritilgan koordinatalarni CSV faylidagi ma'lumotlar bilan solishtiradi.
-    Har bir koordinata, CSV fayldagi qaysidir koordinata bilan threshold oralig'ida bo'lsa,
-    mos deb hisoblanadi.
     """
     def is_nearby(coord, coordinates_set):
         x, y = coord
@@ -66,37 +63,38 @@ class ProcessImageView(APIView):
     def post(self, request, *args, **kwargs):
         transaction_id = str(uuid.uuid4())[:8]
         try:
-            csv_file = request.FILES.get('file')
-            image_url = request.data.get('img_url')
+            image_url = request.data.get('image_url')
+            coordinates = request.data.get('coordinates')
 
-            if not csv_file:
-                logger.error("CSV fayl yuklanmagan")
-                return Response({"error": "CSV fayl yuklanmagan"}, status=status.HTTP_400_BAD_REQUEST)
+            if not image_url or not coordinates:
+                logger.error("Majburiy maydonlar yetishmayapti")
+                return Response({"error": "image_url va coordinates majburiy"}, status=status.HTTP_400_BAD_REQUEST)
 
-            decoder_file = io.StringIO(csv_file.read().decode("utf-8"))
-            reader = csv.reader(decoder_file)
+            logger.info("Qabul qilingan ma'lumotlar: %s", {"image_url": image_url, "coordinates": coordinates})
+
+            # Koordinatalarni setga joylash
             coordinates_set = set()
-
-            # CSV fayldagi koordinatalarni o‘qish
-            for row in reader:
+            for coord in coordinates:
                 try:
-                    x, y = float(row[0]), float(row[1])
+                    x, y = float(coord[0]), float(coord[1])
                     coordinates_set.add((x, y))
                 except (ValueError, IndexError):
-                    logger.warning("Noto‘g‘ri koordinata: %s", row)
+                    logger.warning("Noto‘g‘ri koordinata: %s", coord)
                     continue
 
-            logger.info("CSV fayldan %d ta koordinata yuklandi", len(coordinates_set))
+            logger.info("Qabul qilingan koordinatalar soni: %d", len(coordinates_set))
 
-            # Asosiy CSV fayldagi (barcha) koordinatalarni validatsiya qilish
-            all_coordinates_set = load_coordinates(STUDENT_COORDINATES_PATH)  # yoki boshqa mos CSV
+            # CSV fayldagi ma'lumotlar bilan taqqoslash
+            all_coordinates_set = load_coordinates(STUDENT_COORDINATES_PATH)
             if not validate_coordinates(coordinates_set, all_coordinates_set):
-                logger.error("CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan")
-                return Response({"error": "CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan"}, status=status.HTTP_400_BAD_REQUEST)
+                logger.error("CSV fayl noto‘g‘ri ma'lumotlarni o‘z ichiga olgan")
+                return Response({"error": "Koordinatalar noto‘g‘ri"}, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response({"message": "CSV fayl to‘g‘ri yuklandi va tasdiqlandi."}, status=status.HTTP_200_OK)
+            return Response({
+                "message": "Koordinatalar tasdiqlandi",
+                "transaction_id": transaction_id
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
             logger.error(f"Xatolik: {e}")
             return Response({"error": f"Xatolik yuz berdi: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
