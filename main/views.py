@@ -32,7 +32,6 @@ def is_within_range(coord1, coord2, threshold=5):
     return abs(coord1.get("x", 0) - coord2.get("x", 0)) <= threshold and abs(coord1.get("y", 0) - coord2.get("y", 0)) <= threshold
 
 def find_matching_coordinates(user_coordinates, saved_coordinates, threshold=5):
-    """Foydalanuvchidan kelgan koordinatalarni JSON formatini buzmasdan taqqoslash."""
     matching_coordinates = []
     
     for saved_coord in saved_coordinates:
@@ -45,8 +44,10 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, threshold=5):
                 logger.warning(f"Noto‘g‘ri formatdagi foydalanuvchi koordinata: {user_coord}")
                 continue
             
+            # O'xshashlikni hisoblash
             if is_within_range(user_coord, saved_coord, threshold):
                 matching_coordinates.append(saved_coord)
+                logger.info(f"Matching found: {saved_coord}")
                 break
     
     return matching_coordinates
