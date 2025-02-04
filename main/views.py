@@ -2,6 +2,7 @@ import os
 import csv
 import uuid
 import logging
+import io
 from io import StringIO
 from django.db import transaction
 from rest_framework.views import APIView
@@ -76,6 +77,11 @@ class ProcessImageView(APIView):
             csv_file = request.FILES.get('file')
             image_url = request.data.get('img_url')
 
+            decoder_file = io.StringIO(csv_file.read().decode("utf-8"))
+            reader = csv.reader(decoder_file)
+
+            coordinates_set = set()
+
             if not csv_file:
                 logger.error("CSV fayl yuklanmagan")
                 return Response({"error": "CSV fayl yuklanmagan"}, status=status.HTTP_400_BAD_REQUEST)
@@ -88,23 +94,25 @@ class ProcessImageView(APIView):
                 logger.error("CSV faylni o‘qishda xato: %s", str(e))
                 return Response({"error": "CSV faylni o‘qishda xato"}, status=status.HTTP_400_BAD_REQUEST)
 
-            bubbles = []
             for row in reader:
-                try:
+                if len(row) >= 2:
+                    try:
                     # Avval float qiymatlarni int ga o'zgartirayotganimizni ta'minlash
-                    x = int(float(row.get('x_coord')))  # float dan int ga o'zgartirish
-                    y = int(float(row.get('y_coord')))  # float dan int ga o'zgartirish
-                    bubbles.append((x, y))
-                except (ValueError, TypeError) as e:
-                    logger.warning("Noto‘g‘ri koordinata: %s, Xato: %s", row, str(e))
-                    continue
+                        x = int(row[0].strip()) if row[0].strip() else None
+                        y = int(row[1].strip()) if row[1].strip() else None
+                        if x is not None and y is not None:
+                            coordinates_set.add((x, y))
 
-            logger.info("CSV fayldan %d ta koordinata yuklandi", len(bubbles))
+                    except (ValueError, TypeError) as e:
+                        logger.warning("Noto‘g‘ri koordinata: %s, Xato: %s", row, str(e))
+                        continue
+
+            logger.info("CSV fayldan %d ta koordinata yuklandi", len(coordinates_set))
 
             # Asosiy CSV fayldagi (barcha) koordinatalarni validatsiya qilish
             # (agar kerak bo'lsa; bu yerda butun fayl uchun umumiy validatsiyani amalga oshiramiz)
             all_coordinates_set = load_coordinates(STUDENT_COORDINATES_PATH)  # yoki boshqa mos CSV
-            if not validate_coordinates(bubbles, all_coordinates_set):
+            if not validate_coordinates(coordinates_set, all_coordinates_set):
                 logger.error("CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan")
                 return Response({"error": "CSV fayl noto‘g‘ri ma‘lumotlar o‘z ichiga olgan"}, status=status.HTTP_400_BAD_REQUEST)
 
