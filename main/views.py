@@ -79,8 +79,10 @@ class ProcessImageView(APIView):
                 "user_coordinates": user_coordinates,
                 "matching_coordinates": matching_coordinates
             }
-
-            SAVED_DATA.append(data)  # Ma'lumotni saqlash
+            if matching_coordinates:
+                SAVED_DATA.append(data)
+            else:
+                logger.warning("Hech qanday o‘xshash koordinata topilmadi.")
 
             return Response(data, status=status.HTTP_201_CREATED)
 
