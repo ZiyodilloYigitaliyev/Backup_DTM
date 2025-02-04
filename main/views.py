@@ -51,22 +51,15 @@ def validate_coordinates(bubbles, coordinates_set, threshold=6):
     
     return all(is_nearby(coord, coordinates_set) for coord in bubbles)
 
-# def classify_coordinates(bubbles):
-#     """
-#     Kiritilgan koordinatalarni ro'yxat tartibiga asoslanib tasniflaydi.
+def classify_coordinates(bubbles):
+    student_id_coords = bubbles[:2]
+    phone_number_coords = bubbles[2:9]
+    bubble_coords = bubbles[9:]
+
+    if not bubble_coords:
+        bubble_coords = []
     
-#     Misol uchun:
-#       - Birinchi 2 ta koordinata student_id uchun,
-#       - Keyingi 7 ta koordinata phone_number uchun,
-#       - Qolganlari bubble (javob) koordinatalari sifatida qabul qilinadi.
-    
-#     (Indeks oralig'ini o'zingizning talablaringizga moslab o'zgartiring.)
-#     """
-#     student_id_coords = bubbles[:2]
-#     phone_number_coords = bubbles[2:9]
-#     bubble_coords = bubbles[9:]
-    
-#     return student_id_coords, phone_number_coords, bubble_coords
+    return student_id_coords, phone_number_coords, bubble_coords
 
 class ProcessImageView(APIView):
     permission_classes = [AllowAny]
