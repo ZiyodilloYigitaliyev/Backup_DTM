@@ -23,13 +23,19 @@ def load_coordinates():
                 return []
     return []
 
-def find_matching_coordinates(user_coordinates, saved_coordinates):
+def is_within_range(coord1, coord2, threshold=5):
+    """Koordinatalar threshold oralig'ida joylashganligini tekshiradi."""
+    return abs(coord1["x"] - coord2["x"]) <= threshold and abs(coord1["y"] - coord2["y"]) <= threshold
+
+def find_matching_coordinates(user_coordinates, saved_coordinates, threshold=5):
     """Foydalanuvchidan kelgan koordinatalarni JSON formatini buzmasdan taqqoslash."""
     matching_coordinates = []
     
-    for coord in saved_coordinates:
-        if coord in user_coordinates:
-            matching_coordinates.append(coord)
+    for saved_coord in saved_coordinates:
+        for user_coord in user_coordinates:
+            if is_within_range(user_coord, saved_coord, threshold):
+                matching_coordinates.append(saved_coord)
+                break
     
     return matching_coordinates
 
@@ -52,7 +58,7 @@ class ProcessImageView(APIView):
             # JSON fayldan koordinatalarni yuklash
             saved_coordinates = load_coordinates()
 
-            # O'xshash koordinatalarni topish (formati o'zgarmagan holda)
+            # O'xshash koordinatalarni topish (-5 yoki +5 farq bilan)
             matching_coordinates = find_matching_coordinates(user_coordinates, saved_coordinates)
 
             data = {
