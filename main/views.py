@@ -9,7 +9,6 @@ from conf.settings import BASE_DIR
 
 logger = logging.getLogger(__name__)
 
-# Saqlangan ma'lumotlar uchun vaqtinchalik ro‘yxat
 SAVED_DATA = []
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
 
@@ -18,11 +17,22 @@ def load_coordinates():
     if os.path.exists(COORDINATES_PATH):
         with open(COORDINATES_PATH, 'r', encoding='utf-8') as file:
             try:
-                return json.load(file).get("coordinates", [])
+                return json.load(file).get("coordinates", {})
             except json.JSONDecodeError:
                 logger.error("JSON faylni o'qishda xatolik yuz berdi.")
-                return []
-    return []
+                return {}
+    return {}
+
+def find_matching_coordinates(user_coordinates, saved_coordinates):
+    """Foydalanuvchidan kelgan koordinatalarni JSON formatini buzmasdan taqqoslash."""
+    matching_coordinates = {}
+    
+    for key, value in saved_coordinates.items():
+        matches = {k: v for k, v in value.items() if v in user_coordinates}
+        if matches:
+            matching_coordinates[key] = matches
+    
+    return matching_coordinates
 
 class ProcessImageView(APIView):
     permission_classes = [AllowAny]
@@ -43,8 +53,8 @@ class ProcessImageView(APIView):
             # JSON fayldan koordinatalarni yuklash
             saved_coordinates = load_coordinates()
 
-            # O'xshash koordinatalarni aniqlash
-            matching_coordinates = [coord for coord in user_coordinates if coord in saved_coordinates]
+            # O'xshash koordinatalarni topish (formati o'zgarmagan holda)
+            matching_coordinates = find_matching_coordinates(user_coordinates, saved_coordinates)
 
             data = {
                 "image_url": image_url,
