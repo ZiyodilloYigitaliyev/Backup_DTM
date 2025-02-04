@@ -103,3 +103,18 @@ class ProcessImageView(APIView):
 
         # Koordinatalarni tasniflash
         student_id_coords, phone_number_coords, bubble_coords = classify_coordinates(coordinates_set)
+        
+
+        # Student ID koordinatalarini tekshirish
+        student_coordinates_set = load_coordinates(STUDENT_COORDINATES_PATH)
+        if not validate_coordinates(student_id_coords, student_coordinates_set):
+            logger.error("Student ID koordinatalari CSV faylidagi ma'lumotlarga mos kelmadi")
+            return Response({"error": "Student ID koordinatalari noto‘g‘ri"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "transaction_id": transaction_id,
+            "student_id_coords": student_id_coords,
+            "phone_number_coords": phone_number_coords,
+            "bubble_coords": bubble_coords,
+            "status": "success"
+        }, status=status.HTTP_200_OK)
