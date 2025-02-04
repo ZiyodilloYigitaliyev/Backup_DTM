@@ -27,11 +27,18 @@ def load_coordinates():
                 return []
     return []
 
-def is_within_range(coord1, coord2, threshold=5):
-    """Koordinatalar threshold oralig'ida joylashganligini tekshiradi."""
-    return abs(coord1.get("x", 0) - coord2.get("x", 0)) <= threshold and abs(coord1.get("y", 0) - coord2.get("y", 0)) <= threshold
+def is_within_dynamic_range(user_coord, saved_coord, max_threshold=5):
+    """Foydalanuvchi koordinatasini ±5 oralig‘ida iteratsiya qilib tekshiradi."""
+    user_x, user_y = user_coord["x"], user_coord["y"]
+    saved_x, saved_y = saved_coord["x"], saved_coord["y"]
+    
+    for offset in range(-max_threshold, max_threshold + 1):
+        if (saved_x + offset == user_x) and (saved_y + offset == user_y):
+            return True
+    return False
 
-def find_matching_coordinates(user_coordinates, saved_coordinates, threshold=5):
+def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold=5):
+    """Foydalanuvchi va saqlangan koordinatalarni ±5 oralig‘ida tekshiradi."""
     matching_coordinates = []
     
     for saved_coord in saved_coordinates:
@@ -44,8 +51,7 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, threshold=5):
                 logger.warning(f"Noto‘g‘ri formatdagi foydalanuvchi koordinata: {user_coord}")
                 continue
             
-            # O'xshashlikni hisoblash
-            if is_within_range(user_coord, saved_coord, threshold):
+            if is_within_dynamic_range(user_coord, saved_coord, max_threshold):
                 matching_coordinates.append(saved_coord)
                 logger.info(f"Matching found: {saved_coord}")
                 break
@@ -71,7 +77,7 @@ class ProcessImageView(APIView):
             # JSON fayldan koordinatalarni yuklash
             saved_coordinates = load_coordinates()
 
-            # O'xshash koordinatalarni topish (-5 yoki +5 farq bilan)
+            # O'xshash koordinatalarni topish (±5 farq bilan iteratsiya qilib tekshirish)
             matching_coordinates = find_matching_coordinates(user_coordinates, saved_coordinates)
 
             data = {
@@ -79,10 +85,9 @@ class ProcessImageView(APIView):
                 "user_coordinates": user_coordinates,
                 "matching_coordinates": matching_coordinates
             }
+
             if matching_coordinates:
-                SAVED_DATA.append(data)
-            else:
-                logger.warning("Hech qanday o‘xshash koordinata topilmadi.")
+                SAVED_DATA.append(data)  # Ma'lumotni saqlash
 
             return Response(data, status=status.HTTP_201_CREATED)
 
