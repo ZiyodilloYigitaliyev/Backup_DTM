@@ -17,20 +17,19 @@ def load_coordinates():
     if os.path.exists(COORDINATES_PATH):
         with open(COORDINATES_PATH, 'r', encoding='utf-8') as file:
             try:
-                return json.load(file).get("coordinates", {})
+                return json.load(file).get("coordinates", [])
             except json.JSONDecodeError:
                 logger.error("JSON faylni o'qishda xatolik yuz berdi.")
-                return {}
-    return {}
+                return []
+    return []
 
 def find_matching_coordinates(user_coordinates, saved_coordinates):
     """Foydalanuvchidan kelgan koordinatalarni JSON formatini buzmasdan taqqoslash."""
-    matching_coordinates = {}
+    matching_coordinates = []
     
-    for key, value in saved_coordinates.items():
-        matches = {k: v for k, v in value.items() if v in user_coordinates}
-        if matches:
-            matching_coordinates[key] = matches
+    for coord in saved_coordinates:
+        if coord in user_coordinates:
+            matching_coordinates.append(coord)
     
     return matching_coordinates
 
@@ -45,10 +44,10 @@ class ProcessImageView(APIView):
         """Kelgan ma'lumotni saqlaydi va uni qaytaradi."""
         try:
             image_url = request.data.get('image_url')
-            user_coordinates = request.data.get('coordinates')
+            user_coordinates = request.data.get('coordinates', [])
 
-            if not image_url or not user_coordinates:
-                return Response({"error": "image_url va coordinates majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+            if not image_url or not isinstance(user_coordinates, list):
+                return Response({"error": "image_url va coordinates (list formatida) majburiy"}, status=status.HTTP_400_BAD_REQUEST)
 
             # JSON fayldan koordinatalarni yuklash
             saved_coordinates = load_coordinates()
