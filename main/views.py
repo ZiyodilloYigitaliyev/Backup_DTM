@@ -17,7 +17,11 @@ def load_coordinates():
     if os.path.exists(COORDINATES_PATH):
         with open(COORDINATES_PATH, 'r', encoding='utf-8') as file:
             try:
-                return json.load(file).get("coordinates", [])
+                coordinates = json.load(file).get("coordinates", [])
+                if not isinstance(coordinates, list):
+                    logger.error("Koordinatalar list shaklida emas!")
+                    return []
+                return [coord for coord in coordinates if isinstance(coord, dict) and "x" in coord and "y" in coord]
             except json.JSONDecodeError:
                 logger.error("JSON faylni o'qishda xatolik yuz berdi.")
                 return []
@@ -25,14 +29,22 @@ def load_coordinates():
 
 def is_within_range(coord1, coord2, threshold=5):
     """Koordinatalar threshold oralig'ida joylashganligini tekshiradi."""
-    return abs(coord1["x"] - coord2["x"]) <= threshold and abs(coord1["y"] - coord2["y"]) <= threshold
+    return abs(coord1.get("x", 0) - coord2.get("x", 0)) <= threshold and abs(coord1.get("y", 0) - coord2.get("y", 0)) <= threshold
 
 def find_matching_coordinates(user_coordinates, saved_coordinates, threshold=5):
     """Foydalanuvchidan kelgan koordinatalarni JSON formatini buzmasdan taqqoslash."""
     matching_coordinates = []
     
     for saved_coord in saved_coordinates:
+        if not isinstance(saved_coord, dict) or "x" not in saved_coord or "y" not in saved_coord:
+            logger.warning(f"Noto‘g‘ri formatdagi JSON koordinata: {saved_coord}")
+            continue
+        
         for user_coord in user_coordinates:
+            if not isinstance(user_coord, dict) or "x" not in user_coord or "y" not in user_coord:
+                logger.warning(f"Noto‘g‘ri formatdagi foydalanuvchi koordinata: {user_coord}")
+                continue
+            
             if is_within_range(user_coord, saved_coord, threshold):
                 matching_coordinates.append(saved_coord)
                 break
