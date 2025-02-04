@@ -25,14 +25,14 @@ class ProcessImageView(APIView):
             if not image_url or not coordinates:
                 return Response({"error": "image_url va coordinates majburiy"}, status=status.HTTP_400_BAD_REQUEST)
 
-            data_entry = {
+            data = {
                 "image_url": image_url,
                 "coordinates": coordinates
             }
 
-            SAVED_DATA.append(data_entry)  # Ma'lumotni saqlash
+            SAVED_DATA.append(data)  # Ma'lumotni saqlash
 
-            return Response(data_entry, status=status.HTTP_201_CREATED)
+            return Response(data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"Xatolik: {e}")
