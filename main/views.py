@@ -25,7 +25,7 @@ PHONE_COORDINATES_CACHE_LOCK = Lock()
 def load_coordinates():
     """JSON fayllardan koordinatalarni yuklash (student_id va phone_number uchun)."""
     global COORDINATES_CACHE, COORDINATES_LAST_MODIFIED
-    global PHONE_COORDINATES_CACHE, PHONE_COORDINATES_LAST_MODIFIED
+    
 
     # Student ID koordinatalari yuklash
     if not os.path.exists(COORDINATES_PATH):
@@ -57,6 +57,10 @@ def load_coordinates():
                 except Exception as e:
                     logger.error(f"Student ID yuklashda xatolik: {e}")
                     student_coordinates = []
+                    return student_coordinates
+
+def load_phone_coordinates():
+    global PHONE_COORDINATES_CACHE, PHONE_COORDINATES_LAST_MODIFIED
 
     # Phone Number koordinatalari yuklash
     if not os.path.exists(PHONE_COORDINATES_PATH):
@@ -89,44 +93,59 @@ def load_coordinates():
                     logger.error(f"Telefon raqami yuklashda xatolik: {e}")
                     phone_coordinates = []
 
-    return student_coordinates, phone_coordinates
+    return phone_coordinates
 
         
 
 def find_matching_coordinates(user_coordinates, student_coords, phone_coords, max_threshold=5):
-    """Foydalanuvchi koordinatalarini ±5 oralig‘ida tekshirib, student_id va phone_number alohida qaytaradi."""
-    matching = {}
-    phone_matches = {}
+    """Foydalanuvchi koordinatalarini ±5 oralig‘ida iteratsiya qilib taqqoslaydi va indeks bilan qaytaradi."""
+    matching = {}  # Student ID uchun mos kelganlar
+    phone_matching = {}  # Phone Number uchun mos kelganlar
 
-    def check_coordinates(user_coords, saved_data, result_dict):
-        """O‘xshash koordinatalarni tekshirish va indeks bilan saqlash."""
-        for key, saved_list in saved_data[0].items():  # "n1", "n2", ...
-            seen_coords = set()  # Takrorlanishni oldini olish uchun
+    # Student koordinatalarni tekshirish
+    for key, saved_list in student_coords[0].items():  # "n1", "n2", ...
+        seen_coords = set()  
 
-            for index, indexed_coord in enumerate(saved_list):  # Har bir indeksni olish
-                for _, saved_coord in indexed_coord.items():  # Indeksni olib tashlash
-                    sx, sy = saved_coord["x"], saved_coord["y"]
+        for index, indexed_coord in enumerate(saved_list):  
+            for _, saved_coord in indexed_coord.items():  
+                sx, sy = saved_coord["x"], saved_coord["y"]
 
-                    for user_coord in user_coords:
-                        ux, uy = user_coord["x"], user_coord["y"]
+                for user_coord in user_coordinates:
+                    ux, uy = user_coord["x"], user_coord["y"]
 
-                        if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
-                            coord_tuple = (sx, sy)
+                    if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
+                        coord_tuple = (sx, sy)
 
-                            if coord_tuple not in seen_coords:  # Agar oldin qo‘shilmagan bo‘lsa
-                                seen_coords.add(coord_tuple)
+                        if coord_tuple not in seen_coords:
+                            seen_coords.add(coord_tuple)
 
-                                if key not in result_dict:
-                                    result_dict[key] = []
-                                result_dict[key].append({str(index): saved_coord})  # Indeksni string qilib saqlash
+                            if key not in matching:
+                                matching[key] = []
+                            matching[key].append({str(index): saved_coord})
 
-    # Student ID uchun tekshirish
-    check_coordinates(user_coordinates, student_coords, matching)
+    # **Phone Number koordinatalarni tekshirish**
+    for key, saved_list in phone_coords[0].items():  # "p1", "p2", ...
+        seen_phone_coords = set()  
 
-    # Phone Number uchun tekshirish
-    check_coordinates(user_coordinates, phone_coords, phone_matches)
+        for index, indexed_coord in enumerate(saved_list):  
+            for _, saved_coord in indexed_coord.items():  
+                sx, sy = saved_coord["x"], saved_coord["y"]
 
-    return [{"matching_coordinates": matching, "phone_number_matches": phone_matches}]
+                for user_coord in user_coordinates:
+                    ux, uy = user_coord["x"], user_coord["y"]
+
+                    if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
+                        coord_tuple = (sx, sy)
+
+                        if coord_tuple not in seen_phone_coords:
+                            seen_phone_coords.add(coord_tuple)
+
+                            if key not in phone_matching:
+                                phone_matching[key] = []
+                            phone_matching[key].append({str(index): saved_coord})
+
+    return matching, phone_matching  # Endi ikkita alohida natija qaytariladi
+
 
 
 
@@ -155,18 +174,20 @@ class ProcessImageView(APIView):
             ]
 
             # Student ID va Phone Number koordinatalarini yuklash
-            student_coords, phone_coords = load_coordinates()
+            student_coords = load_coordinates()
+            phone_coords = load_phone_coordinates()
 
             # O‘xshash koordinatalarni topish
-            matching_result = find_matching_coordinates(valid_user_coords, student_coords, phone_coords)
+            matching_coordinates, phone_number_matches = find_matching_coordinates(valid_user_coords, student_coords, phone_coords)
 
             data = {
                 "image_url": image_url,
                 "user_coordinates": user_coords,
-                **matching_result[0]  # matching_coordinates va phone_number_matches alohida qo'shiladi
+                "matching_coordinates": matching_coordinates,  # Student ID uchun mos kelganlar
+                "phone_number_matches": phone_number_matches  # Phone Number uchun mos kelganlar
             }
 
-            if matching_result:
+            if matching_coordinates or phone_number_matches:
                 with SAVED_DATA_LOCK:
                     SAVED_DATA.append(data)
 
@@ -178,6 +199,7 @@ class ProcessImageView(APIView):
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
 
 
     def delete(self, request, *args, **kwargs):
