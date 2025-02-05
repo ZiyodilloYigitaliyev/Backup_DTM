@@ -1,16 +1,18 @@
-import json
 import logging
 import os
+import json
 from threading import Lock
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+
 from conf.settings import BASE_DIR
 
 logger = logging.getLogger(__name__)
 
-# Global o'zgaruvchilar va ularga qulf
+# Global o'zgaruvchilar
 SAVED_DATA = []
 SAVED_DATA_LOCK = Lock()
 
@@ -22,20 +24,18 @@ COORDINATES_CACHE_LOCK = Lock()
 
 def load_coordinates():
     """
-    JSON fayldan koordinatalarni yuklash (student ID va phone number uchun).
-    Agar fayl o'zgarmagan bo'lsa, keshlangan (cache) ma'lumot qaytariladi.
+    JSON fayldan student va phone koordinatalarni yuklaydi.
     
-    Returns:
-        tuple: (student_coordinates: dict, phone_coordinates: dict)
+    Agar fayl mavjud bo'lmasa yoki format xato bo'lsa, bo'sh lug'atlar qaytaradi.
+    Cache mexanizmi yordamida fayl o'zgarmagan bo'lsa, avvalgi natijani qaytaradi.
     """
     global COORDINATES_CACHE, COORDINATES_LAST_MODIFIED
 
     if not os.path.exists(COORDINATES_PATH):
-        logger.error("JSON fayl topilmadi: %s", COORDINATES_PATH)
+        logger.error("Coordinates JSON fayl topilmadi.")
         return {}, {}
 
     current_mtime = os.path.getmtime(COORDINATES_PATH)
-
     with COORDINATES_CACHE_LOCK:
         if COORDINATES_CACHE is not None and current_mtime == COORDINATES_LAST_MODIFIED:
             return COORDINATES_CACHE
@@ -56,83 +56,74 @@ def load_coordinates():
             return COORDINATES_CACHE
 
         except json.JSONDecodeError as e:
-            logger.error("JSON yuklashda xatolik: %s", e)
-            return {}, {}
+            logger.error(f"JSON decode xatosi: {e}")
         except Exception as e:
-            logger.error("Kutilmagan xatolik JSONni yuklashda: %s", e)
-            return {}, {}
+            logger.error(f"Koordinatalarni yuklashda xatolik: {e}")
+
+        return {}, {}
 
 
-def find_matching_coordinates(user_coordinates, student_coords, phone_coords, max_threshold=5):
+def match_coordinates(user_coords, saved_data, max_threshold=5):
     """
-    Foydalanuvchi kiritgan koordinatalarni, student va telefon koordinatalari bilan solishtiradi.
-    Koordinatalar ±max_threshold oralig'ida mos kelsa, ularni indekslari bilan qaytaradi.
-
-    Args:
-        user_coordinates (list): Foydalanuvchi kiritgan koordinatalar (dict lardan iborat, har biri "x" va "y" kalitlarga ega)
-        student_coords (dict): Student koordinatalari
-        phone_coords (dict): Telefon koordinatalari
-        max_threshold (int, optional): Tekshirish oralig'i. Default 5.
-
-    Returns:
-        tuple: (matching_student_coordinates, matching_phone_coordinates)
+    Saqlangan koordinatalarni foydalanuvchi koordinatalari bilan solishtirib,
+    ±max_threshold oralig‘ida mos keladigan koordinatalarni topadi.
+    
+    Natija sifatida lug'at (key: mos kelgan element identifikatori, value: ro'yxat)
+    qaytaradi.
     """
+    matches = {}
+    if not saved_data:
+        return matches
 
-    def match_coordinates(user_coords, saved_data, threshold):
-        matching = {}
+    for key, saved_list in saved_data.items():
+        seen = set()
+        for index, coord_dict in enumerate(saved_list):
+            # Har bir element lug'at ko'rinishida bo'lib, bitta kalit-qiymat juftligini o'z ichiga oladi.
+            for _, saved_coord in coord_dict.items():
+                sx, sy = saved_coord.get("x"), saved_coord.get("y")
+                if sx is None or sy is None:
+                    continue
 
-        if not saved_data:
-            return matching
-
-        # Foydalanuvchi koordinatalarni oldindan tuple shaklida ajratib olish
-        user_tuples = [
-            (coord.get("x"), coord.get("y"))
-            for coord in user_coords
-            if isinstance(coord, dict) and "x" in coord and "y" in coord
-        ]
-
-        for key, saved_list in saved_data.items():
-            seen_coords = set()
-
-            for index, indexed_coord in enumerate(saved_list):
-                # indexed_coord taxminan bitta elementli dict bo'lishi kutilmoqda
-                for saved_coord in indexed_coord.values():
-                    sx = saved_coord.get("x")
-                    sy = saved_coord.get("y")
-                    if sx is None or sy is None:
+                for user_coord in user_coords:
+                    ux, uy = user_coord.get("x"), user_coord.get("y")
+                    if ux is None or uy is None:
                         continue
 
-                    for ux, uy in user_tuples:
-                        if (sx - threshold <= ux <= sx + threshold) and (sy - threshold <= uy <= sy + threshold):
-                            coord_tuple = (sx, sy)
-                            if coord_tuple not in seen_coords:
-                                seen_coords.add(coord_tuple)
-                                matching.setdefault(key, []).append({str(index): saved_coord})
-                            # Agar birinchi moslik topilgan bo'lsa, qo'shimcha tekshirishga hojat yo'q
-                            break
+                    if (sx - max_threshold <= ux <= sx + max_threshold) and \
+                       (sy - max_threshold <= uy <= sy + max_threshold):
+                        coord_tuple = (sx, sy)
+                        if coord_tuple not in seen:
+                            seen.add(coord_tuple)
+                            matches.setdefault(key, []).append({str(index): saved_coord})
+                        # Agar bir marta mos kelsa, boshqa user koordinatalarni tekshirish shart emas
+                        break
+    return matches
 
-        return matching
 
-    matching_student = match_coordinates(user_coordinates, student_coords, max_threshold)
-    matching_phone = match_coordinates(user_coordinates, phone_coords, max_threshold)
-    return matching_student, matching_phone
+def find_matching_coordinates(user_coords, student_coords, phone_coords, max_threshold=5):
+    """
+    Foydalanuvchi koordinatalari bilan student va phone koordinatalarni taqqoslaydi.
+    
+    Natijada tuple (student_matches, phone_matches) shaklida lug'atlarni qaytaradi.
+    """
+    student_matches = match_coordinates(user_coords, student_coords, max_threshold)
+    phone_matches = match_coordinates(user_coords, phone_coords, max_threshold)
+    return student_matches, phone_matches
 
 
 class ProcessImageView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
-        """
-        Saqlangan ma'lumotlarni ko'rsatadi.
-        """
+        """Saqlangan barcha ma'lumotlarni qaytaradi."""
         with SAVED_DATA_LOCK:
             return Response({"saved_data": SAVED_DATA}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         """
-        Tasvir URL va foydalanuvchi kiritgan koordinatalarni qabul qilib,
-        ularni student va telefon koordinatalari bilan solishtiradi.
-        Mos kelsa, ma'lumotni saqlaydi va natijani qaytaradi.
+        Kelayotgan so'rovdan image_url va koordinatalarni qabul qiladi,
+        ularni saqlangan koordinatalar bilan solishtirib, mos keladigan natijalarni qaytaradi.
+        Agar mos keladigan natijalar bo'lsa, ularni global SAVED_DATA ro'yxatiga qo'shadi.
         """
         try:
             image_url = request.data.get('image_url')
@@ -140,50 +131,50 @@ class ProcessImageView(APIView):
 
             if not image_url or not isinstance(user_coords, list):
                 return Response(
-                    {"error": "image_url va coordinates (list formatida) majburiy"},
+                    {"error": "Both 'image_url' and 'coordinates' (list formatida) majburiy."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Faqat "x" va "y" mavjud bo'lgan koordinatalarni qabul qilamiz
+            # Faqat to'g'ri formatdagi koordinatalarni qabul qilamiz
             valid_user_coords = [
                 coord for coord in user_coords
                 if isinstance(coord, dict) and "x" in coord and "y" in coord
             ]
+            if not valid_user_coords:
+                return Response(
+                    {"error": "Yaroqsiz yoki bo'sh koordinatalar kiritildi."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             student_coords, phone_coords = load_coordinates()
 
-            matching_student, matching_phone = find_matching_coordinates(
-                valid_user_coords, student_coords, phone_coords
-            )
+            student_matches, phone_matches = find_matching_coordinates(valid_user_coords, student_coords, phone_coords)
 
             response_data = {
                 "image_url": image_url,
                 "user_coordinates": valid_user_coords,
-                "matching_coordinates": matching_student,
-                "phone_number_matches": matching_phone
+                "matching_coordinates": student_matches,
+                "phone_number_matches": phone_matches
             }
 
-            # Agar mosliklar mavjud bo'lsa, ma'lumotlarni saqlaymiz
-            if matching_student or matching_phone:
+            if student_matches or phone_matches:
                 with SAVED_DATA_LOCK:
                     SAVED_DATA.append(response_data)
 
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logger.error("Xatolik: %s", e, exc_info=True)
+            logger.error(f"Xatolik: {e}", exc_info=True)
             return Response(
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
     def delete(self, request, *args, **kwargs):
-        """
-        Saqlangan barcha ma'lumotlarni tozalaydi.
-        """
+        """Barcha saqlangan ma'lumotlarni o'chiradi."""
         with SAVED_DATA_LOCK:
             SAVED_DATA.clear()
         return Response(
-            {"message": "Barcha ma'lumotlar o‘chirildi"},
+            {"message": "Barcha ma'lumotlar o‘chirildi."},
             status=status.HTTP_200_OK
         )
