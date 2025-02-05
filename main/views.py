@@ -67,6 +67,7 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
                 continue
 
             unique_coords = set()  # Takroriy ma’lumotlarni oldini olish
+            indexed_coords = []  # Indeks bilan saqlash uchun list
 
             for saved_coord in saved_list:
                 sx, sy = saved_coord["x"], saved_coord["y"]
@@ -79,15 +80,17 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
                             coord_tuple = (sx, sy)
                             if coord_tuple not in unique_coords:  # Takrorlanishining oldini olish
                                 unique_coords.add(coord_tuple)
-                                if key not in matching:
-                                    matching[key] = []
-                                matching[key].append(saved_coord)
+                                indexed_coords.append({len(indexed_coords): saved_coord})  # Indeks bilan qo‘shish
                                 logger.info(f"Matching found in {key}: {saved_coord}")
                             break  
+
+            if indexed_coords:
+                matching[key] = indexed_coords
 
     # Format the output as required
     formatted_matching = [{"matching_coordinates": [{key: values}]} for key, values in matching.items()]
     return formatted_matching
+
 
 
 
