@@ -10,7 +10,7 @@ from threading import Lock
 
 logger = logging.getLogger(__name__)
 
-SAVED_DATA = []
+SAVED_DATA = {}
 SAVED_DATA_LOCK = Lock()
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
 
