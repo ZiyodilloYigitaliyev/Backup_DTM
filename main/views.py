@@ -59,7 +59,7 @@ def load_coordinates():
 
 def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold=5):
     """Foydalanuvchi koordinatalarini ±5 oralig‘ida iteratsiya qilib taqqoslaydi."""
-    matching = []
+    matching = {}
 
     for saved_group in saved_coordinates:
         for key, saved_list in saved_group.items():
@@ -74,11 +74,16 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
 
                     for offset in range(0, max_threshold + 1):
                         if (sx + offset == ux and sy + offset == uy) or (sx - offset == ux and sy - offset == uy):
-                            matching.append(saved_coord)
-                            logger.info(f"Matching found: {saved_coord}")
+                            if key not in matching:
+                                matching[key] = []
+                            matching[key].append(saved_coord)
+                            logger.info(f"Matching found in {key}: {saved_coord}")
                             break  
 
-    return matching
+    # Format the output as required
+    formatted_matching = [{"matching_coordinates": [{key: values}]} for key, values in matching.items()]
+    return formatted_matching
+
 
 class ProcessImageView(APIView):
     permission_classes = [AllowAny]
