@@ -58,39 +58,23 @@ def load_coordinates():
             return []
 
 def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold=5):
-    """Foydalanuvchi koordinatalarini ±5 oralig‘ida iteratsiya qilib taqqoslaydi."""
+    """Foydalanuvchi koordinatalarini ±5 oralig‘ida iteratsiya qilib taqqoslaydi va indeks bilan qaytaradi."""
     matching = {}
 
-    for saved_group in saved_coordinates:
-        for key, saved_list in saved_group.items():
-            if not isinstance(saved_list, list):
-                continue
-
-            unique_coords = set()  # Takroriy ma’lumotlarni oldini olish
-            indexed_coords = []  # Indeks bilan saqlash uchun list
-
-            for saved_coord in saved_list:
+    for key, saved_list in saved_coordinates[0].items():  # "n1", "n2", ...
+        for index, indexed_coord in enumerate(saved_list):  # Har bir indeksni olish
+            for _, saved_coord in indexed_coord.items():  # Indeksni olib tashlash
                 sx, sy = saved_coord["x"], saved_coord["y"]
 
                 for user_coord in user_coordinates:
                     ux, uy = user_coord["x"], user_coord["y"]
 
-                    for offset in range(0, max_threshold + 1):
-                        if (sx + offset == ux and sy + offset == uy) or (sx - offset == ux and sy - offset == uy):
-                            coord_tuple = (sx, sy)
-                            if coord_tuple not in unique_coords:  # Takrorlanishining oldini olish
-                                unique_coords.add(coord_tuple)
-                                indexed_coords.append({len(indexed_coords): saved_coord})  # Indeks bilan qo‘shish
-                                logger.info(f"Matching found in {key}: {saved_coord}")
-                            break  
+                    if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
+                        if key not in matching:
+                            matching[key] = []
+                        matching[key].append({str(index): saved_coord})  # Indeksni string qilib saqlash
 
-            if indexed_coords:
-                matching[key] = indexed_coords
-
-    # Format the output as required
-    formatted_matching = [{"matching_coordinates": [{key: values}]} for key, values in matching.items()]
-    return formatted_matching
-
+    return [{"matching_coordinates": matching}]
 
 
 
