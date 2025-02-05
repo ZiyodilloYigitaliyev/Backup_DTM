@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 SAVED_DATA = []
 SAVED_DATA_LOCK = Lock()
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
-PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
+PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/phone_number.json')
 
 COORDINATES_CACHE = None
 COORDINATES_LAST_MODIFIED = None
@@ -172,7 +172,7 @@ class ProcessImageView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-                
+
     def delete(self, request, *args, **kwargs):
         with SAVED_DATA_LOCK:
             SAVED_DATA.clear()
