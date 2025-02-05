@@ -66,6 +66,8 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
             if not isinstance(saved_list, list):
                 continue
 
+            unique_coords = set()  # Takroriy ma’lumotlarni oldini olish
+
             for saved_coord in saved_list:
                 sx, sy = saved_coord["x"], saved_coord["y"]
 
@@ -74,15 +76,19 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
 
                     for offset in range(0, max_threshold + 1):
                         if (sx + offset == ux and sy + offset == uy) or (sx - offset == ux and sy - offset == uy):
-                            if key not in matching:
-                                matching[key] = []
-                            matching[key].append(saved_coord)
-                            logger.info(f"Matching found in {key}: {saved_coord}")
+                            coord_tuple = (sx, sy)
+                            if coord_tuple not in unique_coords:  # Takrorlanishining oldini olish
+                                unique_coords.add(coord_tuple)
+                                if key not in matching:
+                                    matching[key] = []
+                                matching[key].append(saved_coord)
+                                logger.info(f"Matching found in {key}: {saved_coord}")
                             break  
 
     # Format the output as required
     formatted_matching = [{"matching_coordinates": [{key: values}]} for key, values in matching.items()]
     return formatted_matching
+
 
 
 class ProcessImageView(APIView):
