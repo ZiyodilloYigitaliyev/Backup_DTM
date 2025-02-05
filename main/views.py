@@ -18,6 +18,9 @@ PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.jso
 COORDINATES_CACHE = None
 COORDINATES_LAST_MODIFIED = None
 COORDINATES_CACHE_LOCK = Lock()
+PHONE_COORDINATES_CACHE = None
+PHONE_COORDINATES_LAST_MODIFIE = None
+PHONE_COORDINATES_CACHE_LOCK = Lock()
 
 def load_coordinates():
     """JSON fayllardan koordinatalarni yuklash (student_id va phone_number uchun)."""
