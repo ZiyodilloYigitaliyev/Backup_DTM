@@ -4,6 +4,7 @@ from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from .serializers import MappingDataSerializer
 
 class BackupDataView(APIView):
     permission_classes = [AllowAny]
@@ -56,11 +57,9 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            last_backup = Mapping_Data.objects.last()
-            if last_backup:
-                return Response({"list_id": last_backup.list_id}, status=status.HTTP_200_OK)
-            else:
-                return Response({"list_id": None}, status=status.HTTP_200_OK)
+            all_data = Mapping_Data.objects.all()
+            serializer = MappingDataSerializer(all_data, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
