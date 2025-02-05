@@ -157,20 +157,16 @@ class ProcessImageView(APIView):
             # Student ID va Phone Number koordinatalarini yuklash
             student_coords, phone_coords = load_coordinates()
 
-            # Matching coordinates (student ID)
-            matching_coordinates = find_matching_coordinates(valid_user_coords, student_coords)
-
-            # Matching phone number coordinates
-            phone_number_matches = find_matching_coordinates(valid_user_coords, phone_coords)
+            # O‘xshash koordinatalarni topish
+            matching_result = find_matching_coordinates(valid_user_coords, student_coords, phone_coords)
 
             data = {
                 "image_url": image_url,
                 "user_coordinates": user_coords,
-                "matching_coordinates": matching_coordinates,  # Student ID uchun
-                "phone_number_matches": phone_number_matches  # Telefon raqam uchun
+                **matching_result[0]  # matching_coordinates va phone_number_matches alohida qo'shiladi
             }
 
-            if matching_coordinates or phone_number_matches:
+            if matching_result:
                 with SAVED_DATA_LOCK:
                     SAVED_DATA.append(data)
 
@@ -182,6 +178,7 @@ class ProcessImageView(APIView):
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
 
     def delete(self, request, *args, **kwargs):
         with SAVED_DATA_LOCK:
