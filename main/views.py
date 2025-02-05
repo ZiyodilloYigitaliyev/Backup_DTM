@@ -10,7 +10,7 @@ from threading import Lock
 
 logger = logging.getLogger(__name__)
 
-SAVED_DATA = {}
+SAVED_DATA = []
 SAVED_DATA_LOCK = Lock()
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
 
@@ -37,7 +37,7 @@ def load_coordinates():
                 data = json.load(file)
                 
                 # JSON noto‘g‘ri formatlangan bo‘lsa, uni tuzatish
-                if not isinstance(data, dict) or "coordinates" not in data:
+                if not isinstance(data, list) or "coordinates" not in data:
                     logger.error("JSON format noto‘g‘ri yoki 'coordinates' kaliti mavjud emas!")
                     return []
                 
@@ -63,13 +63,13 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
     matching = []
     
     for saved_coord in saved_coordinates:
-        if not isinstance(saved_coord, dict) or "x" not in saved_coord or "y" not in saved_coord:
+        if not isinstance(saved_coord, list) or "x" not in saved_coord or "y" not in saved_coord:
             continue
         
         sx, sy = saved_coord["x"], saved_coord["y"]
         
         for user_coord in user_coordinates:
-            if not isinstance(user_coord, dict) or "x" not in user_coord or "y" not in user_coord:
+            if not isinstance(user_coord, list) or "x" not in user_coord or "y" not in user_coord:
                 continue
             
             ux, uy = user_coord["x"], user_coord["y"]
@@ -92,7 +92,7 @@ class ProcessImageView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             image_url = request.data.get('image_url')
-            user_coords = request.data.get('coordinates', [])
+            user_coords = request.data.get('coordinates', {})
             
             if not image_url or not isinstance(user_coords, list):
                 return Response(
@@ -101,7 +101,7 @@ class ProcessImageView(APIView):
                 )
             
             valid_user_coords = [
-                coord for coord in user_coords if isinstance(coord, dict) and "x" in coord and "y" in coord
+                coord for coord in user_coords if isinstance(coord, list) and "x" in coord and "y" in coord
             ]
             
             saved_coords = load_coordinates()
