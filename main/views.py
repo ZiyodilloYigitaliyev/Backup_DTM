@@ -13,7 +13,7 @@ from conf.settings import BASE_DIR
 logger = logging.getLogger(__name__)
 
 # Global o'zgaruvchilar
-SAVED_DATA = []
+SAVED_DATA = []  # Har bir element ro'yxat shaklida saqlanadi
 SAVED_DATA_LOCK = Lock()
 
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
@@ -95,7 +95,7 @@ def match_coordinates(user_coords, saved_data, max_threshold=5):
                         if coord_tuple not in seen:
                             seen.add(coord_tuple)
                             matches.setdefault(key, []).append({str(index): saved_coord})
-                        # Agar bir marta mos kelsa, boshqa user koordinatalarni tekshirish shart emas
+                        # Agar moslik topilgan bo'lsa, shu user koordinata uchun boshqa tekshirishlar o'tkazilmaydi
                         break
     return matches
 
@@ -117,6 +117,7 @@ class ProcessImageView(APIView):
     def get(self, request, *args, **kwargs):
         """Saqlangan barcha ma'lumotlarni qaytaradi."""
         with SAVED_DATA_LOCK:
+            # Natijani dict ichida qaytarishimiz mumkin, ammo SAVED_DATA ning o'zi ro'yxatdir
             return Response({"saved_data": SAVED_DATA}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
@@ -150,17 +151,25 @@ class ProcessImageView(APIView):
 
             student_matches, phone_matches = find_matching_coordinates(valid_user_coords, student_coords, phone_coords)
 
+            # Endi ma'lumotlarni ro'yxat shaklida saqlaymiz:
+            # [image_url, user_coordinates, matching_coordinates, phone_number_matches]
+            saved_entry = [
+                image_url,
+                valid_user_coords,
+                student_matches,
+                phone_matches
+            ]
+
+            if student_matches or phone_matches:
+                with SAVED_DATA_LOCK:
+                    SAVED_DATA.append(saved_entry)
+
             response_data = {
                 "image_url": image_url,
                 "user_coordinates": valid_user_coords,
                 "matching_coordinates": student_matches,
                 "phone_number_matches": phone_matches
             }
-
-            if student_matches or phone_matches:
-                with SAVED_DATA_LOCK:
-                    SAVED_DATA.append(response_data)
-
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
