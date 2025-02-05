@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Backup
+from .models import Mapping_Data
 
 # Register your models here.
-admin.site.register(Backup)
+admin.site.register(Mapping_Data)

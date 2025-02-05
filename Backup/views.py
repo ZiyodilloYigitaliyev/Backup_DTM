@@ -1,12 +1,9 @@
-from django.shortcuts import render
-from .models import Backup
+from .models import Mapping_Data
 from rest_framework.permissions import AllowAny
 from django.db import transaction
 from rest_framework.response import Response
-from sympy import Max
 from rest_framework.views import APIView
 from rest_framework import status
-import requests
 
 class BackupDataView(APIView):
     permission_classes = [AllowAny]
@@ -29,7 +26,7 @@ class BackupDataView(APIView):
                                         status=status.HTTP_400_BAD_REQUEST)
 
                     # list_id bazada borligini tekshiramiz
-                    backup_obj, created = Backup.objects.get_or_create(list_id=list_id)
+                    backup_obj, created = Mapping_Data.objects.get_or_create(list_id=list_id)
 
                     # Eski true_answer va order listiga yangi ma'lumotlarni qo'shamiz
                     if not isinstance(backup_obj.true_answer, list):
@@ -59,7 +56,7 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            last_backup = Backup.objects.last()
+            last_backup = Mapping_Data.objects.last()
             if last_backup:
                 return Response({"list_id": last_backup.list_id}, status=status.HTTP_200_OK)
             else:
@@ -74,7 +71,7 @@ class BackupDataView(APIView):
     def delete(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                backups = Backup.objects.all()
+                backups = Mapping_Data.objects.all()
                 if not backups.exists():
                     return Response(
                         {"error": "No backup exists to delete."},

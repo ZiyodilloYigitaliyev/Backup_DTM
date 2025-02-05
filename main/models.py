@@ -1,5 +1,5 @@
 from django.db import models
-from Backup.models import Backup
+from Backup.models import Mapping_Data
 
 class ProcessedTest(models.Model):
     file = models.FileField(upload_to='uploads/')

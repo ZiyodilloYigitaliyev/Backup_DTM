@@ -1,7 +1,7 @@
-from .models import Backup
+from .models import Mapping_Data
 from rest_framework import serializers
 
 class BackupSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Backup
+        model = Mapping_Data
         fields = '__all__'
