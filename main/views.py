@@ -101,11 +101,6 @@ def match_coordinates(user_coords, saved_data, max_threshold=5):
 
 
 def find_matching_coordinates(user_coords, student_coords, phone_coords, max_threshold=5):
-    """
-    Foydalanuvchi koordinatalari bilan student va phone koordinatalarni taqqoslaydi.
-    
-    Natijada tuple (student_matches, phone_matches) shaklida lug'atlarni qaytaradi.
-    """
     student_matches = match_coordinates(user_coords, student_coords, max_threshold)
     phone_matches = match_coordinates(user_coords, phone_coords, max_threshold)
     return student_matches, phone_matches
@@ -153,24 +148,24 @@ class ProcessImageView(APIView):
 
             # Endi ma'lumotlarni ro'yxat shaklida saqlaymiz:
             # [image_url, user_coordinates, matching_coordinates, phone_number_matches]
-            saved_entry = [
-                image_url,
-                valid_user_coords,
-                student_matches,
-                phone_matches
-            ]
+            data = {
+                "image_url": image_url,
+                "valid_user_coords": valid_user_coords,
+                "student_matches": student_matches,
+                "phone_matches": phone_matches
+            }
 
             if student_matches or phone_matches:
                 with SAVED_DATA_LOCK:
-                    SAVED_DATA.append(saved_entry)
+                    SAVED_DATA.append(data)
 
-            response_data = {
-                "image_url": image_url,
-                "user_coordinates": valid_user_coords,
-                "matching_coordinates": student_matches,
-                "phone_number_matches": phone_matches
-            }
-            return Response(response_data, status=status.HTTP_201_CREATED)
+            # response_data = {
+            #     "image_url": image_url,
+            #     "user_coordinates": valid_user_coords,
+            #     "matching_coordinates": student_matches,
+            #     "phone_number_matches": phone_matches
+            # }
+            return Response(data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"Xatolik: {e}", exc_info=True)
