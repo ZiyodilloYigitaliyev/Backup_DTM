@@ -32,7 +32,7 @@ def load_coordinates():
 
     with COORDINATES_CACHE_LOCK:
         if COORDINATES_CACHE is not None and current_mtime == COORDINATES_LAST_MODIFIED:
-            return COORDINATES_CACHE  # Cache bor bo‘lsa, shuni qaytar
+            return COORDINATES_CACHE  
 
         try:
             with open(COORDINATES_PATH, 'r', encoding='utf-8') as file:
