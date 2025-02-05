@@ -1,112 +1,109 @@
 import logging
 import os
 import json
-from threading import Lock
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from conf.settings import BASE_DIR
+from threading import Lock
 
 logger = logging.getLogger(__name__)
 
 SAVED_DATA = []
 SAVED_DATA_LOCK = Lock()
-
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
+PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/phone_number.json')
+ANSWER_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/answer_coordinates.json')  # Yangi path
 
 COORDINATES_CACHE = None
 COORDINATES_LAST_MODIFIED = None
+PHONE_COORDINATES_CACHE = None
+PHONE_COORDINATES_LAST_MODIFIED = None
+ANSWER_COORDINATES_CACHE = None
+ANSWER_COORDINATES_LAST_MODIFIED = None
+
 COORDINATES_CACHE_LOCK = Lock()
+PHONE_COORDINATES_CACHE_LOCK = Lock()
+ANSWER_COORDINATES_CACHE_LOCK = Lock()
 
 
-def load_coordinates():
-    """
-    JSON fayldan student va phone koordinatalarni yuklaydi.
-    """
-    global COORDINATES_CACHE, COORDINATES_LAST_MODIFIED
+def load_coordinates(file_path, cache, last_modified, cache_lock):
+    """JSON fayldan koordinatalarni yuklash."""
+    if not os.path.exists(file_path):
+        logger.error(f"JSON fayl topilmadi: {file_path}")
+        return {}
 
-    if not os.path.exists(COORDINATES_PATH):
-        logger.error("Coordinates JSON fayl topilmadi.")
-        return {}, {}
+    current_mtime = os.path.getmtime(file_path)
 
-    current_mtime = os.path.getmtime(COORDINATES_PATH)
-    with COORDINATES_CACHE_LOCK:
-        if COORDINATES_CACHE is not None and current_mtime == COORDINATES_LAST_MODIFIED:
-            return COORDINATES_CACHE
+    with cache_lock:
+        if cache is not None and current_mtime == last_modified:
+            return cache
 
         try:
-            with open(COORDINATES_PATH, 'r', encoding='utf-8') as file:
+            with open(file_path, 'r', encoding='utf-8') as file:
                 data = json.load(file)
 
-            if not isinstance(data, dict):
-                logger.error("JSON format noto‘g‘ri! Malumotlar lug'at shaklida emas.")
-                return {}, {}
+                if not isinstance(data, dict) or "coordinates" not in data:
+                    logger.error(f"JSON format noto‘g‘ri yoki 'coordinates' kaliti mavjud emas: {file_path}")
+                    return {}
 
-            student_coords = data.get("student_coordinates", {})
-            phone_coords = data.get("phone_coordinates", {})
+                coordinates = data["coordinates"]
 
-            # Bo‘sh yoki noto‘g‘ri format bo‘lsa, bo‘sh lug‘atga aylantiramiz.
-            if not isinstance(student_coords, dict):
-                student_coords = {}
-            if not isinstance(phone_coords, dict):
-                phone_coords = {}
+                if not isinstance(coordinates, (list, dict)):  # List yoki dict bo‘lishi kerak
+                    logger.error(f"Koordinatalar noto‘g‘ri shaklda: {file_path}")
+                    return {}
 
-            COORDINATES_CACHE = (student_coords, phone_coords)
-            COORDINATES_LAST_MODIFIED = current_mtime
-            return student_coords, phone_coords
+                cache = coordinates
+                last_modified = current_mtime
+                return cache
 
-        except (json.JSONDecodeError, Exception) as e:
-            logger.error(f"JSON yuklashda xatolik: {e}")
-            return {}, {}
+        except json.JSONDecodeError:
+            logger.error(f"JSON faylni o'qishda xatolik yuz berdi: {file_path}")
+            return {}
+        except Exception as e:
+            logger.error(f"Xatolik yuz berdi: {e}")
+            return {}
 
 
-def match_coordinates(user_coords, saved_data, max_threshold=5):
-    """
-    Saqlangan koordinatalarni foydalanuvchi koordinatalari bilan solishtirib,
-    ±max_threshold oralig‘ida mos keladigan koordinatalarni indeks bilan qaytaradi.
-    """
-    matches = {}
-    if not saved_data:
-        logger.warning("Saqlangan ma'lumotlar bo'sh, tekshirish o'tkazilmaydi.")
-        return matches
+def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold=5):
+    """Koordinatalarni taqqoslab, o'xshashlarini qaytaradi."""
+    matching = {}
 
-    for key, saved_list in saved_data.items():
-        seen = set()
-        for index, coord_dict in enumerate(saved_list):
-            for _, saved_coord in coord_dict.items():
-                sx, sy = saved_coord.get("x"), saved_coord.get("y")
-                if sx is None or sy is None:
-                    continue
+    if isinstance(saved_coordinates, dict):  # Agar `saved_coordinates` dictionary bo‘lsa
+        for key, answers in saved_coordinates.items():  # "1", "2", "3", ...
+            for sub_key, coord_list in answers.items():  # "A", "B", "C", "D"
+                sx, sy = coord_list[0], coord_list[1]  # X va Y koordinatalarni ajratib olish
 
-                for user_coord in user_coords:
-                    ux, uy = user_coord.get("x"), user_coord.get("y")
-                    if ux is None or uy is None:
-                        continue
+                for user_coord in user_coordinates:
+                    ux, uy = user_coord["x"], user_coord["y"]
 
                     if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
-                        coord_tuple = (sx, sy)
-                        if coord_tuple not in seen:
-                            seen.add(coord_tuple)
-                            matches.setdefault(key, []).append({str(index): saved_coord})
-                            logger.info(f"Matching found: {saved_coord} in {key} at index {index}")
-                        break
-    return matches
+                        if key not in matching:
+                            matching[key] = []
+                        matching[key].append({sub_key: {"x": sx, "y": sy}})  # O‘xshash topilgan koordinata
+    else:
+        for key, saved_list in saved_coordinates[0].items():
+            seen_coords = set()
 
+            for index, indexed_coord in enumerate(saved_list):
+                for _, saved_coord in indexed_coord.items():
+                    sx, sy = saved_coord["x"], saved_coord["y"]
 
-def find_matching_coordinates(user_coords, student_coords, phone_coords, max_threshold=5):
-    """
-    Student va phone koordinatalar uchun o‘xshashlikni tekshiradi.
-    """
-    student_matches = match_coordinates(user_coords, student_coords, max_threshold)
-    phone_matches = match_coordinates(user_coords, phone_coords, max_threshold)
+                    for user_coord in user_coordinates:
+                        ux, uy = user_coord["x"], user_coord["y"]
 
-    if not student_matches:
-        logger.info("Student ID uchun hech qanday mos keluvchi koordinatalar topilmadi.")
-    if not phone_matches:
-        logger.info("Telefon raqami uchun hech qanday mos keluvchi koordinatalar topilmadi.")
+                        if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
+                            coord_tuple = (sx, sy)
 
-    return student_matches, phone_matches
+                            if coord_tuple not in seen_coords:
+                                seen_coords.add(coord_tuple)
+
+                                if key not in matching:
+                                    matching[key] = []
+                                matching[key].append({str(index): saved_coord})
+
+    return matching
 
 
 class ProcessImageView(APIView):
@@ -117,10 +114,6 @@ class ProcessImageView(APIView):
             return Response({"saved_data": SAVED_DATA}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
-        """
-        Kelayotgan so'rovdan image_url va koordinatalarni qabul qiladi,
-        ularni saqlangan koordinatalar bilan solishtirib, mos keladigan natijalarni qaytaradi.
-        """
         try:
             image_url = request.data.get('image_url')
             user_coords = request.data.get('coordinates', [])
@@ -134,25 +127,26 @@ class ProcessImageView(APIView):
             valid_user_coords = [
                 coord for coord in user_coords if isinstance(coord, dict) and "x" in coord and "y" in coord
             ]
-            if not valid_user_coords:
-                return Response(
-                    {"error": "Yaroqsiz yoki bo'sh koordinatalar kiritildi."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
 
-            student_coords, phone_coords = load_coordinates()
+            saved_coords = load_coordinates(COORDINATES_PATH, COORDINATES_CACHE, COORDINATES_LAST_MODIFIED, COORDINATES_CACHE_LOCK)
+            phone_coords = load_coordinates(PHONE_COORDINATES_PATH, PHONE_COORDINATES_CACHE, PHONE_COORDINATES_LAST_MODIFIED, PHONE_COORDINATES_CACHE_LOCK)
+            answer_coords = load_coordinates(ANSWER_COORDINATES_PATH, ANSWER_COORDINATES_CACHE, ANSWER_COORDINATES_LAST_MODIFIED, ANSWER_COORDINATES_CACHE_LOCK)  # Yangi fileni yuklaymiz
 
-            student_matches, phone_matches = find_matching_coordinates(valid_user_coords, student_coords, phone_coords)
+            matches = find_matching_coordinates(valid_user_coords, saved_coords)
+            phone_matches = find_matching_coordinates(valid_user_coords, phone_coords)
+            answer_matches = find_matching_coordinates(valid_user_coords, answer_coords)  # Yangi fayl uchun taqqoslash
 
             data = {
                 "image_url": image_url,
                 "user_coordinates": user_coords,
-                "matching_coordinates": student_matches,
-                "phone_number_matches": phone_matches
+                "matching_coordinates": matches,
+                "phone_coordinates": phone_matches,  # Phone koordinatalarni ham qaytaramiz
+                "answer_coordinates": answer_matches  # Yangi fayldan topilgan koordinatalar
             }
 
-            with SAVED_DATA_LOCK:
-                SAVED_DATA.append(data)
+            if matches or phone_matches or answer_matches:
+                with SAVED_DATA_LOCK:
+                    SAVED_DATA.append(data)
 
             return Response(data, status=status.HTTP_201_CREATED)
 
@@ -167,6 +161,6 @@ class ProcessImageView(APIView):
         with SAVED_DATA_LOCK:
             SAVED_DATA.clear()
         return Response(
-            {"message": "Barcha ma'lumotlar o‘chirildi."},
+            {"message": "Barcha ma'lumotlar o‘chirildi"},
             status=status.HTTP_200_OK
         )
