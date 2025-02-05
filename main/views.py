@@ -10,12 +10,10 @@ from conf.settings import BASE_DIR
 
 logger = logging.getLogger(__name__)
 
-# Global o'zgaruvchilar
-SAVED_DATA = []  # Har bir element ro'yxat shaklida saqlanadi
+SAVED_DATA = []
 SAVED_DATA_LOCK = Lock()
 
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
-#PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/phone_number.json')  # Agar kerak bo'lsa
 
 COORDINATES_CACHE = None
 COORDINATES_LAST_MODIFIED = None
@@ -25,8 +23,6 @@ COORDINATES_CACHE_LOCK = Lock()
 def load_coordinates():
     """
     JSON fayldan student va phone koordinatalarni yuklaydi.
-    Agar fayl mavjud bo'lmasa yoki format xato bo'lsa, bo'sh lug'atlar qaytaradi.
-    Cache mexanizmi yordamida fayl o'zgarmagan bo'lsa, avvalgi natijani qaytaradi.
     """
     global COORDINATES_CACHE, COORDINATES_LAST_MODIFIED
 
@@ -44,13 +40,13 @@ def load_coordinates():
                 data = json.load(file)
 
             if not isinstance(data, dict):
-                logger.error("JSON format noto‘g‘ri!")
+                logger.error("JSON format noto‘g‘ri! Malumotlar lug'at shaklida emas.")
                 return {}, {}
 
             student_coords = data.get("student_coordinates", {})
             phone_coords = data.get("phone_coordinates", {})
 
-            # Agar malumotlar lug'at shaklida bo'lmasa, bo'sh lug'atga aylantiramiz.
+            # Bo‘sh yoki noto‘g‘ri format bo‘lsa, bo‘sh lug‘atga aylantiramiz.
             if not isinstance(student_coords, dict):
                 student_coords = {}
             if not isinstance(phone_coords, dict):
@@ -58,7 +54,7 @@ def load_coordinates():
 
             COORDINATES_CACHE = (student_coords, phone_coords)
             COORDINATES_LAST_MODIFIED = current_mtime
-            return COORDINATES_CACHE
+            return student_coords, phone_coords
 
         except (json.JSONDecodeError, Exception) as e:
             logger.error(f"JSON yuklashda xatolik: {e}")
@@ -72,38 +68,44 @@ def match_coordinates(user_coords, saved_data, max_threshold=5):
     """
     matches = {}
     if not saved_data:
+        logger.warning("Saqlangan ma'lumotlar bo'sh, tekshirish o'tkazilmaydi.")
         return matches
 
     for key, saved_list in saved_data.items():
         seen = set()
         for index, coord_dict in enumerate(saved_list):
-            # Har bir element lug'at shaklida bo'lib, bitta kalit-qiymat juftligini o'z ichiga oladi.
             for _, saved_coord in coord_dict.items():
                 sx, sy = saved_coord.get("x"), saved_coord.get("y")
                 if sx is None or sy is None:
                     continue
+
                 for user_coord in user_coords:
                     ux, uy = user_coord.get("x"), user_coord.get("y")
                     if ux is None or uy is None:
                         continue
+
                     if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
                         coord_tuple = (sx, sy)
                         if coord_tuple not in seen:
                             seen.add(coord_tuple)
                             matches.setdefault(key, []).append({str(index): saved_coord})
+                            logger.info(f"Matching found: {saved_coord} in {key} at index {index}")
                         break
     return matches
 
 
 def find_matching_coordinates(user_coords, student_coords, phone_coords, max_threshold=5):
     """
-    Foydalanuvchi koordinatalarini student va phone koordinatalar bilan solishtiradi.
-    Natija sifatida ikkita alohida lug'at qaytaradi:
-      - student_matches: Student ID uchun mos kelgan koordinatalar.
-      - phone_matches: Telefon raqami uchun mos kelgan koordinatalar.
+    Student va phone koordinatalar uchun o‘xshashlikni tekshiradi.
     """
     student_matches = match_coordinates(user_coords, student_coords, max_threshold)
     phone_matches = match_coordinates(user_coords, phone_coords, max_threshold)
+
+    if not student_matches:
+        logger.info("Student ID uchun hech qanday mos keluvchi koordinatalar topilmadi.")
+    if not phone_matches:
+        logger.info("Telefon raqami uchun hech qanday mos keluvchi koordinatalar topilmadi.")
+
     return student_matches, phone_matches
 
 
@@ -115,6 +117,10 @@ class ProcessImageView(APIView):
             return Response({"saved_data": SAVED_DATA}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
+        """
+        Kelayotgan so'rovdan image_url va koordinatalarni qabul qiladi,
+        ularni saqlangan koordinatalar bilan solishtirib, mos keladigan natijalarni qaytaradi.
+        """
         try:
             image_url = request.data.get('image_url')
             user_coords = request.data.get('coordinates', [])
