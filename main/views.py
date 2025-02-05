@@ -15,7 +15,7 @@ SAVED_DATA = []  # Har bir element ro'yxat shaklida saqlanadi
 SAVED_DATA_LOCK = Lock()
 
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
-PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/phone_number.json')  # Agar kerak bo'lsa
+#PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/phone_number.json')  # Agar kerak bo'lsa
 
 COORDINATES_CACHE = None
 COORDINATES_LAST_MODIFIED = None
