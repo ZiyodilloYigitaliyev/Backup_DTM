@@ -2,18 +2,17 @@ import logging
 import os
 import json
 from threading import Lock
-
+from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-
 from conf.settings import BASE_DIR
 
 logger = logging.getLogger(__name__)
 
-# Global o'zgaruvchilar
-SAVED_DATA = []  # Har bir element ro'yxat shaklida saqlanadi
+# Global o'zgaruvchilar va qulflar
+SAVED_DATA = []
 SAVED_DATA_LOCK = Lock()
 
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
@@ -23,162 +22,162 @@ COORDINATES_CACHE_LOCK = Lock()
 
 
 def load_coordinates():
-    """
-    JSON fayldan student va phone koordinatalarni yuklaydi.
-    
-    Agar fayl mavjud bo'lmasa yoki format xato bo'lsa, bo'sh lug'atlar qaytaradi.
-    Cache mexanizmi yordamida fayl o'zgarmagan bo'lsa, avvalgi natijani qaytaradi.
-    """
+    """JSON fayldan koordinatalarni yuklab, strukturani tekshiradi va cache qiladi."""
     global COORDINATES_CACHE, COORDINATES_LAST_MODIFIED
 
     if not os.path.exists(COORDINATES_PATH):
-        logger.error("Coordinates JSON fayl topilmadi.")
+        logger.error(f"Fayl topilmadi: {COORDINATES_PATH}")
         return {}, {}
 
     current_mtime = os.path.getmtime(COORDINATES_PATH)
     with COORDINATES_CACHE_LOCK:
-        if COORDINATES_CACHE is not None and current_mtime == COORDINATES_LAST_MODIFIED:
+        if COORDINATES_CACHE and current_mtime == COORDINATES_LAST_MODIFIED:
             return COORDINATES_CACHE
 
         try:
-            with open(COORDINATES_PATH, 'r', encoding='utf-8') as file:
-                data = json.load(file)
+            with open(COORDINATES_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
 
-            if not isinstance(data, dict):
-                logger.error("JSON format noto‘g‘ri!")
-                return {}, {}
+            # Struktura tekshiruvi
+            if not all(key in data for key in ("student_coordinates", "phone_coordinates")):
+                raise ValueError("JSON faylda kerakli kalitlar yo'q")
 
-            student_coords = data.get("student_coordinates", {})
-            phone_coords = data.get("phone_coordinates", {})
+            student_coords = data["student_coordinates"]
+            phone_coords = data["phone_coordinates"]
+
+            # Ma'lumotlar strukturasi tekshiruvi
+            if not all(isinstance(d, dict) for d in (student_coords, phone_coords)):
+                raise TypeError("Koordinatalar noto'g'ri formatda")
 
             COORDINATES_CACHE = (student_coords, phone_coords)
             COORDINATES_LAST_MODIFIED = current_mtime
+            logger.info("Koordinatalar muvaffaqiyatli yangilandi")
             return COORDINATES_CACHE
 
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode xatosi: {e}")
         except Exception as e:
-            logger.error(f"Koordinatalarni yuklashda xatolik: {e}")
+            logger.error(f"Xatolik: {str(e)}", exc_info=True)
+            return {}, {}
 
-        return {}, {}
+
+def validate_coordinate(coord):
+    """Koordinata strukturasi va qiymatlarini tekshiradi"""
+    if not isinstance(coord, dict):
+        return False
+    if "x" not in coord or "y" not in coord:
+        return False
+    if not (isinstance(coord["x"], (int, float)) and isinstance(coord["y"], (int, float))):
+        return False
+    return True
 
 
 def match_coordinates(user_coords, saved_data, max_threshold=5):
-    """
-    Saqlangan koordinatalarni foydalanuvchi koordinatalari bilan solishtirib,
-    ±max_threshold oralig‘ida mos keladigan koordinatalarni topadi.
-    
-    Natija sifatida lug'at (key: mos kelgan element identifikatori, value: ro'yxat)
-    qaytaradi.
-    """
+    """Koordinatalarni solishtirishni optimallashtirilgan versiyasi"""
     matches = {}
-    if not saved_data:
+    if not saved_data or not user_coords:
         return matches
 
-    for key, saved_list in saved_data.items():
-        seen = set()
-        for index, coord_dict in enumerate(saved_list):
-            # Har bir element lug'at ko'rinishida bo'lib, bitta kalit-qiymat juftligini o'z ichiga oladi.
-            for _, saved_coord in coord_dict.items():
-                sx, sy = saved_coord.get("x"), saved_coord.get("y")
-                if sx is None or sy is None:
+    for key, items in saved_data.items():
+        matched_items = []
+        for idx, item in enumerate(items):
+            for item_key, saved_coord in item.items():
+                if not validate_coordinate(saved_coord):
+                    logger.warning(f"Yaroqsiz koordinata: {key}[{idx}]")
                     continue
-
+                
+                sx = saved_coord["x"]
+                sy = saved_coord["y"]
+                
                 for user_coord in user_coords:
-                    ux, uy = user_coord.get("x"), user_coord.get("y")
-                    if ux is None or uy is None:
+                    if not validate_coordinate(user_coord):
                         continue
+                    
+                    ux = user_coord["x"]
+                    uy = user_coord["y"]
+                    
+                    if (abs(sx - ux) <= max_threshold) and (abs(sy - uy) <= max_threshold):
+                        matched_items.append({item_key: saved_coord})
+                        break  # Birorta moslik topilsa keyingisiga o'tmaymiz
 
-                    if (sx - max_threshold <= ux <= sx + max_threshold) and \
-                       (sy - max_threshold <= uy <= sy + max_threshold):
-                        coord_tuple = (sx, sy)
-                        if coord_tuple not in seen:
-                            seen.add(coord_tuple)
-                            matches.setdefault(key, []).append({str(index): saved_coord})
-                        # Agar moslik topilgan bo'lsa, shu user koordinata uchun boshqa tekshirishlar o'tkazilmaydi
-                        break
+        if matched_items:
+            matches[key] = matched_items
+
     return matches
-
-
-def find_matching_coordinates(user_coords, student_coords, phone_coords, max_threshold=5):
-    student_matches = match_coordinates(user_coords, student_coords, max_threshold)
-    phone_matches = match_coordinates(user_coords, phone_coords, max_threshold)
-    return student_matches, phone_matches
 
 
 class ProcessImageView(APIView):
     permission_classes = [AllowAny]
+    MAX_THRESHOLD = 5  # Konfiguratsiya uchun
 
-    def get(self, request, *args, **kwargs):
-        """Saqlangan barcha ma'lumotlarni qaytaradi."""
+    def get(self, request):
+        """Barcha saqlangan ma'lumotlarni formatlangan holda qaytaradi"""
         with SAVED_DATA_LOCK:
-            # Natijani dict ichida qaytarishimiz mumkin, ammo SAVED_DATA ning o'zi ro'yxatdir
-            return Response({"saved_data": SAVED_DATA}, status=status.HTTP_200_OK)
+            formatted_data = [{
+                "timestamp": item["timestamp"],
+                "image_url": item["image_url"],
+                "matches_found": bool(item["student_matches"] or item["phone_matches"]),
+                "match_counts": {
+                    "students": sum(len(v) for v in item["student_matches"].values()),
+                    "phones": sum(len(v) for v in item["phone_matches"].values())
+                }
+            } for item in SAVED_DATA]
+            
+            return Response({"count": len(SAVED_DATA), "results": formatted_data})
 
-    def post(self, request, *args, **kwargs):
-        """
-        Kelayotgan so'rovdan image_url va koordinatalarni qabul qiladi,
-        ularni saqlangan koordinatalar bilan solishtirib, mos keladigan natijalarni qaytaradi.
-        Agar mos keladigan natijalar bo'lsa, ularni global SAVED_DATA ro'yxatiga qo'shadi.
-        """
+    def post(self, request):
+        """Yangi ma'lumotlarni qabul qilishni takomillashtirilgan versiyasi"""
         try:
-            image_url = request.data.get('image_url')
-            user_coords = request.data.get('coordinates', [])
-
+            data = request.data
+            image_url = data.get('image_url')
+            user_coords = data.get('coordinates', [])
+            
+            # Ma'lumotlarni validatsiya qilish
             if not image_url or not isinstance(user_coords, list):
-                return Response(
-                    {"error": "Both 'image_url' and 'coordinates' (list formatida) majburiy."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                raise ValueError("image_url va coordinates majburiy")
 
-            # Faqat to'g'ri formatdagi koordinatalarni qabul qilamiz
-            valid_user_coords = [
-                coord for coord in user_coords
-                if isinstance(coord, dict) and "x" in coord and "y" in coord
-            ]
-            if not valid_user_coords:
-                return Response(
-                    {"error": "Yaroqsiz yoki bo'sh koordinatalar kiritildi."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            valid_coords = [c for c in user_coords if validate_coordinate(c)]
+            if not valid_coords:
+                raise ValueError("Yaroqli koordinatalar yo'q")
 
+            # Koordinatalarni yuklash
             student_coords, phone_coords = load_coordinates()
+            
+            # Mosliklarni topish
+            student_matches = match_coordinates(valid_coords, student_coords, self.MAX_THRESHOLD)
+            phone_matches = match_coordinates(valid_coords, phone_coords, self.MAX_THRESHOLD)
 
-            student_matches, phone_matches = find_matching_coordinates(valid_user_coords, student_coords, phone_coords)
-
-            # Endi ma'lumotlarni ro'yxat shaklida saqlaymiz:
-            # [image_url, user_coordinates, matching_coordinates, phone_number_matches]
-            data = {
+            # Ma'lumotlarni saqlash
+            entry = {
+                "timestamp": datetime.now().isoformat(),
                 "image_url": image_url,
-                "valid_user_coords": valid_user_coords,
+                "user_coords": valid_coords,
                 "student_matches": student_matches,
                 "phone_matches": phone_matches
             }
 
-            if student_matches or phone_matches:
-                with SAVED_DATA_LOCK:
-                    SAVED_DATA.append(data)
+            with SAVED_DATA_LOCK:
+                SAVED_DATA.append(entry)
+                # Xotirani boshqarish uchun eski ma'lumotlarni tozalash
+                if len(SAVED_DATA) > 1000:
+                    SAVED_DATA.pop(0)
 
-            # response_data = {
-            #     "image_url": image_url,
-            #     "user_coordinates": valid_user_coords,
-            #     "matching_coordinates": student_matches,
-            #     "phone_number_matches": phone_matches
-            # }
-            return Response(data, status=status.HTTP_201_CREATED)
+            return Response({
+                "status": "success",
+                "matches": {
+                    "student_count": sum(len(v) for v in student_matches.values()),
+                    "phone_count": sum(len(v) for v in phone_matches.values())
+                }
+            }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logger.error(f"Xatolik: {e}", exc_info=True)
+            logger.error(f"Xatolik: {str(e)}", exc_info=True)
             return Response(
-                {"error": f"Xatolik yuz berdi: {str(e)}"},
+                {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    def delete(self, request, *args, **kwargs):
-        """Barcha saqlangan ma'lumotlarni o'chiradi."""
+    def delete(self, request):
+        """Ma'lumotlarni tozalash uchun optimallashtirilgan metod"""
         with SAVED_DATA_LOCK:
             SAVED_DATA.clear()
-        return Response(
-            {"message": "Barcha ma'lumotlar o‘chirildi."},
-            status=status.HTTP_200_OK
-        )
+        logger.info("Barcha ma'lumotlar tozalandi")
+        return Response({"status": "success"}, status=status.HTTP_204_NO_CONTENT)
