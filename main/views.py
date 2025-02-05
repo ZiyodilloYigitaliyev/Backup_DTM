@@ -19,12 +19,12 @@ COORDINATES_LAST_MODIFIED = None
 COORDINATES_CACHE_LOCK = Lock()
 
 def load_coordinates():
-    """JSON fayldan koordinatalarni yuklash (optimallashtirilgan versiya)."""
+    """JSON fayldan koordinatalarni yuklash (list shaklida qabul qilish uchun)."""
     global COORDINATES_CACHE, COORDINATES_LAST_MODIFIED
 
     if not os.path.exists(COORDINATES_PATH):
         logger.error("JSON fayl topilmadi.")
-        return {}
+        return []
 
     current_mtime = os.path.getmtime(COORDINATES_PATH)
     
@@ -39,44 +39,46 @@ def load_coordinates():
                 # JSON noto‘g‘ri formatlangan bo‘lsa, uni tuzatish
                 if not isinstance(data, dict) or "coordinates" not in data:
                     logger.error("JSON format noto‘g‘ri yoki 'coordinates' kaliti mavjud emas!")
-                    return {}
-
+                    return []
+                
                 coordinates = data["coordinates"]
                 
-                if not isinstance(coordinates, dict):
-                    logger.error("Koordinatalar 'dictionary' shaklida emas!")
-                    return {}
-
+                if not isinstance(coordinates, list):
+                    logger.error("Koordinatalar 'list' shaklida emas!")
+                    return []
+                
                 COORDINATES_CACHE = coordinates
                 COORDINATES_LAST_MODIFIED = current_mtime
                 return COORDINATES_CACHE
 
         except json.JSONDecodeError:
             logger.error("JSON faylni o'qishda xatolik yuz berdi.")
-            return {}
+            return []
         except Exception as e:
             logger.error(f"Xatolik yuz berdi: {e}")
-            return {}
-
+            return []
 
 def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold=5):
     """Foydalanuvchi koordinatalarini ±5 oralig‘ida iteratsiya qilib taqqoslaydi."""
-    matching = {}
+    matching = []
     
-    for section, values in saved_coordinates.items():
-        for key, saved_coord in values.items():
-            sx, sy = saved_coord["x"], saved_coord["y"]
+    for saved_coord in saved_coordinates:
+        if not isinstance(saved_coord, dict) or "x" not in saved_coord or "y" not in saved_coord:
+            continue
+        
+        sx, sy = saved_coord["x"], saved_coord["y"]
+        
+        for user_coord in user_coordinates:
+            if not isinstance(user_coord, dict) or "x" not in user_coord or "y" not in user_coord:
+                continue
             
-            for user_coord in user_coordinates:
-                ux, uy = user_coord["x"], user_coord["y"]
-                
-                for offset in range(0, max_threshold + 1):
-                    if (sx + offset == ux and sy + offset == uy) or (sx - offset == ux and sy - offset == uy):
-                        if section not in matching:
-                            matching[section] = {}
-                        matching[section][key] = saved_coord
-                        logger.info(f"Matching found: {saved_coord}")
-                        break  
+            ux, uy = user_coord["x"], user_coord["y"]
+            
+            for offset in range(0, max_threshold + 1):
+                if (sx + offset == ux and sy + offset == uy) or (sx - offset == ux and sy - offset == uy):
+                    matching.append(saved_coord)
+                    logger.info(f"Matching found: {saved_coord}")
+                    break  
     
     return matching
 
