@@ -23,35 +23,41 @@ def load_coordinates():
     global COORDINATES_CACHE, COORDINATES_LAST_MODIFIED
 
     if not os.path.exists(COORDINATES_PATH):
+        logger.error("JSON fayl topilmadi.")
         return {}
 
     current_mtime = os.path.getmtime(COORDINATES_PATH)
     
     with COORDINATES_CACHE_LOCK:
-        if (COORDINATES_CACHE is not None and 
-            current_mtime == COORDINATES_LAST_MODIFIED):
+        if COORDINATES_CACHE is not None and current_mtime == COORDINATES_LAST_MODIFIED:
             return COORDINATES_CACHE
 
         try:
             with open(COORDINATES_PATH, 'r', encoding='utf-8') as file:
                 data = json.load(file)
-                coordinates = data.get("coordinates", {})
+                
+                # JSON noto‘g‘ri formatlangan bo‘lsa, uni tuzatish
+                if not isinstance(data, dict) or "coordinates" not in data:
+                    logger.error("JSON format noto‘g‘ri yoki 'coordinates' kaliti mavjud emas!")
+                    return {}
+
+                coordinates = data["coordinates"]
                 
                 if not isinstance(coordinates, dict):
-                    logger.error("Koordinatalar dictionary shaklida emas!")
-                    COORDINATES_CACHE = {}
-                else:
-                    COORDINATES_CACHE = coordinates
-                
+                    logger.error("Koordinatalar 'dictionary' shaklida emas!")
+                    return {}
+
+                COORDINATES_CACHE = coordinates
                 COORDINATES_LAST_MODIFIED = current_mtime
                 return COORDINATES_CACHE
-                
+
         except json.JSONDecodeError:
             logger.error("JSON faylni o'qishda xatolik yuz berdi.")
             return {}
         except Exception as e:
             logger.error(f"Xatolik yuz berdi: {e}")
             return {}
+
 
 def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold=5):
     """Foydalanuvchi koordinatalarini ±5 oralig‘ida iteratsiya qilib taqqoslaydi."""
