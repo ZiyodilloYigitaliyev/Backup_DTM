@@ -62,6 +62,8 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
     matching = {}
 
     for key, saved_list in saved_coordinates[0].items():  # "n1", "n2", ...
+        seen_coords = set()  # Takrorlanishni oldini olish uchun
+
         for index, indexed_coord in enumerate(saved_list):  # Har bir indeksni olish
             for _, saved_coord in indexed_coord.items():  # Indeksni olib tashlash
                 sx, sy = saved_coord["x"], saved_coord["y"]
@@ -70,11 +72,17 @@ def find_matching_coordinates(user_coordinates, saved_coordinates, max_threshold
                     ux, uy = user_coord["x"], user_coord["y"]
 
                     if (sx - max_threshold <= ux <= sx + max_threshold) and (sy - max_threshold <= uy <= sy + max_threshold):
-                        if key not in matching:
-                            matching[key] = []
-                        matching[key].append({str(index): saved_coord})  # Indeksni string qilib saqlash
+                        coord_tuple = (sx, sy)
+
+                        if coord_tuple not in seen_coords:  # Agar oldin qo‘shilmagan bo‘lsa
+                            seen_coords.add(coord_tuple)
+
+                            if key not in matching:
+                                matching[key] = []
+                            matching[key].append({str(index): saved_coord})  # Indeksni string qilib saqlash
 
     return [{"matching_coordinates": matching}]
+
 
 
 
