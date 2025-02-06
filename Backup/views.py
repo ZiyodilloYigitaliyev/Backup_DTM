@@ -57,14 +57,17 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            all_data = Mapping_Data.objects.all()
-            serializer = MappingDataSerializer(all_data, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            last_entry = Mapping_Data.objects.order_by('-id').first()  # Eng oxirgi yozuvni olish
+            if last_entry:
+                return Response({"last_list_id": last_entry.list_id}, status=status.HTTP_200_OK)
+            else:
+                return Response({"message": "Hech qanday ma'lumot topilmadi"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response(
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
 
 
     def delete(self, request, *args, **kwargs):
