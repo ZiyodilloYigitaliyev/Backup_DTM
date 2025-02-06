@@ -59,7 +59,7 @@ class BackupDataView(APIView):
         try:
             last_entry = Mapping_Data.objects.order_by('-id').first()  # Eng oxirgi yozuvni olish
             if last_entry:
-                return Response({"last_list_id": last_entry.list_id}, status=status.HTTP_200_OK)
+                return Response({"list_id": last_entry.list_id}, status=status.HTTP_200_OK)
             else:
                 return Response({"message": "Hech qanday ma'lumot topilmadi"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
