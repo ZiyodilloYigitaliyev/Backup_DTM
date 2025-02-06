@@ -7,19 +7,19 @@ class allCategory(models.Model):
 class ProcessedData(models.Model):
     CATEGORY_CHOICES = [
         ('matching', 'Matching Coordinates'),
+        ('user_id', 'User ID Coordinates'),
         ('phone', 'Phone Coordinates'),
         ('answer', 'Answer Coordinates'),
     ]
 
     x_coord = models.FloatField()
-    y_coord = models.FloatField()
+    y_coord = models.FloatField() 
     data_type = models.CharField(max_length=255)
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES) 
 
 class ProcessedTest(models.Model):
     file = models.FileField(upload_to='uploads/')
     file_url = models.URLField(max_length=500, default=False)
-    bubbles = models.JSONField(null=False, default=False)
     phone_number = models.CharField(max_length=20, unique=True, default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     student_id = models.BigAutoField(primary_key=True)
