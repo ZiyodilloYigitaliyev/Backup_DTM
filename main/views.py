@@ -14,7 +14,7 @@ SAVED_DATA = []
 SAVED_DATA_LOCK = Lock()
 COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/coordinates.json')
 PHONE_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/phone_number.json')
-ANSWER_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/answer_coordinates.json')  # Yangi path
+ANSWER_COORDINATES_PATH = os.path.join(BASE_DIR, 'app/coordinates/answer_coordinates.json') 
 
 COORDINATES_CACHE = None
 COORDINATES_LAST_MODIFIED = None
