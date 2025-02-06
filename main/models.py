@@ -7,6 +7,7 @@ class allCategory(models.Model):
 class ProcessedData(models.Model):
     CATEGORY_CHOICES = [
         ('matching', 'Matching Coordinates'),
+        {'user_id', 'User ID Coordinates'},
         ('phone', 'Phone Coordinates'),
         ('answer', 'Answer Coordinates'),
     ]

@@ -61,7 +61,7 @@ class BackupDataView(APIView):
             if last_entry:
                 return Response({"list_id": last_entry.list_id}, status=status.HTTP_200_OK)
             else:
-                return Response({"message": "Hech qanday ma'lumot topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"message": "Hech qanday ma'lumot topilmadi"})
         except Exception as e:
             return Response(
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
