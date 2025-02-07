@@ -15,8 +15,8 @@ class BackupDataView(APIView):
             incoming_data = request.data
 
             if not isinstance(incoming_data, list):
-                return JsonResponse({"error": "Payload format must be a list of dictionaries."},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Payload format must be a list of dictionaries."},
+                                status=status.HTTP_400_BAD_REQUEST)
 
             backups_saved = []
 
@@ -28,16 +28,16 @@ class BackupDataView(APIView):
                     order = item.get("order")
 
                     if list_id is None or order is None:
-                        return JsonResponse({"error": "list_id and order are required."},
-                                            status=status.HTTP_400_BAD_REQUEST)
+                        return Response({"error": "list_id and order are required."},
+                                        status=status.HTTP_400_BAD_REQUEST)
 
-                    # ProcessedID obyektini bazadan qidiramiz
+                    # ProcessedID obyektini qidirish
                     processed_id_obj = ProcessedID.objects.filter(list_id=list_id).first()
                     if not processed_id_obj:
-                        return JsonResponse({"error": f"ProcessedID with list_id {list_id} not found."},
-                                            status=status.HTTP_404_NOT_FOUND)
+                        return Response({"error": f"ProcessedID with list_id {list_id} not found."},
+                                        status=status.HTTP_404_NOT_FOUND)
 
-                    # Mapping_Data obyektini yaratamiz
+                    # Mapping_Data obyektini yaratish
                     mapping_data_obj = Mapping_Data.objects.create(
                         true_answersID=processed_id_obj,
                         category=category,
@@ -52,17 +52,17 @@ class BackupDataView(APIView):
                         "order": mapping_data_obj.order
                     })
 
-            return JsonResponse(
+            return Response(
                 {"success": "Mapping data saved successfully.", "data": backups_saved},
                 status=status.HTTP_201_CREATED
             )
 
         except Exception as e:
-            return JsonResponse(
+            return Response(
                 {"error": f"An error occurred: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+                
     def get(self, request, *args, **kwargs):
         try:
             last_entry = ProcessedID.objects.order_by('-id').first()  # Eng oxirgi yozuvni olish
