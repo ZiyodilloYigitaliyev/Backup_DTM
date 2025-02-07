@@ -69,7 +69,7 @@ class BackupDataView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            last_entry = Mapping_Data.objects.order_by('-id').first()  # Eng oxirgi yozuvni olish
+            last_entry = ProcessedID.objects.order_by('-id').first()  # Eng oxirgi yozuvni olish
             if last_entry:
                 return Response({"list_id": last_entry.answer.list_id}, status=status.HTTP_200_OK)
             else:
