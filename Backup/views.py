@@ -71,7 +71,7 @@ class BackupDataView(APIView):
         try:
             last_entry = ProcessedID.objects.order_by('-id').first()  # Eng oxirgi yozuvni olish
             if last_entry:
-                return Response({"list_id": last_entry.answer.list_id}, status=status.HTTP_200_OK)
+                return Response({"list_id": last_entry.list_id}, status=status.HTTP_200_OK)
             else:
                 return Response({"message": "Hech qanday ma'lumot topilmadi"})
         except Exception as e:
