@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Mapping_Data
+from .models import *
 
 # Register your models here.
-admin.site.register(Mapping_Data)
+admin.site.register([Mapping_Data, ProcessedID])
