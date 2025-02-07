@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import ProcessedData, Mapping_Data, ProcessedTest, ProcessedTestResult
-
+import logging
 class ResultAPIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
@@ -80,25 +80,40 @@ class ResultAPIView(APIView):
 
             for answer_data in answers:
                 answer = answer_data["answer"]
-
-                # Mapping_Data modeli orqali tekshirish
-                mapping_data_obj = None
-
-                # Mapping_Data'dan barcha obyektlarni iteratsiya qilish
-                for mapping_data in Mapping_Data.objects.all():
-                    if answer in mapping_data.true_answer:
-                        mapping_data_obj = mapping_data
-                        break
-
                 is_correct = False
                 score = 0
 
+                # Mapping_Data modeli orqali tekshirish
+                mapping_data_obj = None
+                if mapping_data_obj and mapping_data_obj.order:
+                    try:
+                        # Javobni `order` ro'yxatida borligini tekshirish
+                        is_correct = answer_data["order"] in mapping_data_obj.order
+                    except (ValueError, TypeError):
+                        is_correct = False
+                else:
+                    is_correct = False
+
                 if mapping_data_obj:
-                    # Javobni order bo'yicha tekshirish
-                    answer_index = mapping_data_obj.true_answer.index(answer)
-                    if answer_index < len(mapping_data_obj.order):
-                        is_correct = True
-                        score = mapping_data_obj.order[answer_index]
+                    # Javobni `order` bo'yicha tekshirish
+                    try:
+                        answer_index = mapping_data_obj.order.index(answer_data["order"])
+                        if answer_index >= 0:
+                            is_correct = True
+                    except ValueError:
+                        is_correct = False
+
+                    # Kategoriyaga qarab ballni aniqlash
+                    if mapping_data_obj.categorys.startswith("Majburiy_fan"):
+                        score = 1.1
+                    elif mapping_data_obj.categorys.startswith("Fan_1"):
+                        score = 2.1
+                    elif mapping_data_obj.categorys.startswith("Fan_2"):
+                        score = 3.1
+
+                    # Agar javob noto'g'ri bo'lsa, ballni 0 qilish
+                    if not is_correct:
+                        score = 0
 
                 # Har bir javobni ProcessedTestResult modeliga saqlash
                 result = ProcessedTestResult.objects.create(
@@ -128,7 +143,8 @@ class ResultAPIView(APIView):
                 "message": "Koordinatalar muvaffaqiyatli qayta ishlangan!",
             }
 
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
 
         except ValueError as ve:
             return Response({"error": f"ValueError: {str(ve)}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -138,7 +154,7 @@ class ResultAPIView(APIView):
             return Response({"error": f"Mapping_Data not found: {str(mdne)}"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             # Log the error for debugging
-            import logging
+        
             logger = logging.getLogger(__name__)
             logger.error(f"Unexpected error: {str(e)}")
             return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

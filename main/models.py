@@ -1,8 +1,6 @@
 from django.db import models
 from Backup.models import Mapping_Data
 
-class allCategory(models.Model):
-    category = models.CharField(max_length=200)
 # ==Models==
 class ProcessedData(models.Model):
     CATEGORY_CHOICES = [

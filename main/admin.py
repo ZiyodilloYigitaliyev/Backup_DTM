@@ -1,11 +1,6 @@
 from django.contrib import admin
-from .models import allCategory, ProcessedData
+from .models import ProcessedData
 
-@admin.register(allCategory)
-class AllCategoryAdmin(admin.ModelAdmin):
-    list_display = ('id', 'category')  # Jadval ustunlarini ko‘rsatish
-    search_fields = ('category',)  # Qidirish imkoniyati
-    ordering = ('id',)  # ID bo‘yicha tartiblash
 
 @admin.register(ProcessedData)
 class ProcessedDataAdmin(admin.ModelAdmin):

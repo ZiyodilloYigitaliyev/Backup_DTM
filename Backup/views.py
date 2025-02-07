@@ -1,4 +1,4 @@
-from .models import Mapping_Data
+from .models import Mapping_Data, ProcessedID
 from rest_framework.permissions import AllowAny
 from django.db import transaction
 from rest_framework.response import Response
@@ -8,6 +8,7 @@ from .serializers import MappingDataSerializer
 
 class BackupDataView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         try:
             incoming_data = request.data
@@ -27,8 +28,14 @@ class BackupDataView(APIView):
                         return Response({"error": "list_id and order are required."},
                                         status=status.HTTP_400_BAD_REQUEST)
 
-                    # list_id bazada borligini tekshiramiz
-                    backup_obj, created = Mapping_Data.objects.get_or_create(list_id=list_id)
+                    # list_id bo'yicha ProcessedID bazada mavjudligini tekshiramiz
+                    processed_id_obj = ProcessedID.objects.filter(list_id=list_id).first()
+                    if not processed_id_obj:
+                        return Response({"error": f"ProcessedID with list_id {list_id} not found."},
+                                        status=status.HTTP_404_NOT_FOUND)
+
+                    # Mapping_Data'ni olish yoki yaratish
+                    backup_obj, created = Mapping_Data.objects.get_or_create(answer=processed_id_obj)
 
                     # Eski true_answer va order listiga yangi ma'lumotlarni qo'shamiz
                     if not isinstance(backup_obj.true_answer, list):
@@ -44,7 +51,7 @@ class BackupDataView(APIView):
                     backup_obj.save()
 
                     backups_saved.append({
-                        "list_id": backup_obj.list_id,
+                        "list_id": backup_obj.answer.list_id,
                         "category": backup_obj.category,
                         "true_answer": backup_obj.true_answer,
                         "order": backup_obj.order
@@ -64,7 +71,7 @@ class BackupDataView(APIView):
         try:
             last_entry = Mapping_Data.objects.order_by('-id').first()  # Eng oxirgi yozuvni olish
             if last_entry:
-                return Response({"list_id": last_entry.list_id}, status=status.HTTP_200_OK)
+                return Response({"list_id": last_entry.answer.list_id}, status=status.HTTP_200_OK)
             else:
                 return Response({"message": "Hech qanday ma'lumot topilmadi"})
         except Exception as e:
@@ -72,8 +79,6 @@ class BackupDataView(APIView):
                 {"error": f"Xatolik yuz berdi: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-
 
     def delete(self, request, *args, **kwargs):
         try:
