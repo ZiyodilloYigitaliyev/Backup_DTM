@@ -6,7 +6,3 @@ class MappingDataSerializer(serializers.ModelSerializer):
         model = Mapping_Data
         fields = '__all__'
 
-class ProcessedIDSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProcessedID
-        fields = '__all__'
