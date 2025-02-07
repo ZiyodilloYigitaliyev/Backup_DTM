@@ -2,9 +2,9 @@ from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import ProcessedData, Mapping_Data
+from .models import ProcessedData, Mapping_Data, ProcessedTest, ProcessedTestResult
 
-class ListIDAPIView(APIView):
+class ResultAPIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             # Requestdan image_url va coordinates ma'lumotlarini olish
@@ -28,7 +28,13 @@ class ListIDAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            results = []
+            # Kategoriya bo'yicha natijalarni yig'ish
+            results = {
+                "user_id": [],
+                "phone": [],
+                "answer": [],
+            }
+
             for coord in valid_coords:
                 x, y = coord["x"], coord["y"]
 
@@ -38,41 +44,101 @@ class ListIDAPIView(APIView):
                 ).order_by("x_coord")  # Min x bo‘yicha tartib
 
                 for data in matched_data:
-                    results.append({
-                        "data_type": data.data_type,
-                        "x_coord": data.x_coord,
-                        "y_coord": data.y_coord,
-                    })
+                    if data.category in results:
+                        results[data.category].append({
+                            "data_type": data.data_type,
+                            "x_coord": data.x_coord,
+                            "y_coord": data.y_coord,
+                            "answer": data.answer,
+                        })
 
             # Agar hech qanday moslik topilmasa
-            if not results:
+            if not any(results.values()):
                 return Response(
                     {"error": "Mos keluvchi koordinatalar topilmadi!"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            # Aniqlangan `data_type`larni minimal x bo‘yicha tartiblash va birlashtirish
-            sorted_results = sorted(results, key=lambda item: item["x_coord"])
-            concatenated_data = "".join([res["data_type"] for res in sorted_results])
+            # `matching` uchun list_idni aniqlash
+            list_id_results = sorted(results["user_id"], key=lambda item: item["x_coord"])
+            list_id = "".join([res["data_type"] for res in list_id_results]) if list_id_results else None
 
-            # Aniqlangan `list_id`ni Mapping_Data modelida tekshirish
-            mapping_data_obj = Mapping_Data.objects.filter(list_id=int(concatenated_data)).first()
-            if not mapping_data_obj:
-                return Response(
-                    {"error": f"Mapping_Data jadvalida list_id '{concatenated_data}' topilmadi!"},
-                    status=status.HTTP_404_NOT_FOUND,
+            # `phone` uchun telefon raqamni aniqlash
+            phone_results = sorted(results["phone"], key=lambda item: item["x_coord"])
+            phone_number = "".join([res["data_type"] for res in phone_results]) if phone_results else None
+
+            # `answer` uchun javoblarni aniqlash
+            answers = results["answer"]
+            mapped_answers = []
+
+            # ProcessedTest obyektini bir marta yaratish
+            processed_test = ProcessedTest.objects.create(
+                file_url=image_url,
+                phone_number=phone_number if phone_number else "Unknown",
+                total_score=0,  # Yakuniy ballni keyinroq yangilash
+            )
+
+            for answer_data in answers:
+                answer = answer_data["answer"]
+
+                # Mapping_Data modeli orqali tekshirish
+                mapping_data_obj = None
+
+                # Mapping_Data'dan barcha obyektlarni iteratsiya qilish
+                for mapping_data in Mapping_Data.objects.all():
+                    if answer in mapping_data.true_answer:
+                        mapping_data_obj = mapping_data
+                        break
+
+                is_correct = False
+                score = 0
+
+                if mapping_data_obj:
+                    # Javobni order bo'yicha tekshirish
+                    answer_index = mapping_data_obj.true_answer.index(answer)
+                    if answer_index < len(mapping_data_obj.order):
+                        is_correct = True
+                        score = mapping_data_obj.order[answer_index]
+
+                # Har bir javobni ProcessedTestResult modeliga saqlash
+                result = ProcessedTestResult.objects.create(
+                    student=processed_test,
+                    student_answer=answer,
+                    is_correct=is_correct,
+                    score=score,
                 )
+                mapped_answers.append({
+                    "answer": answer,
+                    "is_correct": is_correct,
+                    "score": score,
+                })
 
-            # Mapping_Data modeli orqali kerakli natijani olish
+            # Yakuniy ballni yangilash
+            total_score = sum([res["score"] for res in mapped_answers if res["is_correct"]])
+            processed_test.total_score = total_score
+            processed_test.save()
+
+            # Yakuniy javob
             response_data = {
                 "image_url": image_url,
-                "list_id": concatenated_data,
-                "true_answer": mapping_data_obj.true_answer,
-                "order": mapping_data_obj.order,
-                "message": "Koordinatalar muvaffaqiyatli qayta ishlangan va Mapping_Data topildi!",
+                "list_id": list_id,
+                "phone_number": phone_number,
+                "answers": mapped_answers,
+                "total_score": total_score,
+                "message": "Koordinatalar muvaffaqiyatli qayta ishlangan!",
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
 
+        except ValueError as ve:
+            return Response({"error": f"ValueError: {str(ve)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except ProcessedData.DoesNotExist as pdne:
+            return Response({"error": f"ProcessedData not found: {str(pdne)}"}, status=status.HTTP_404_NOT_FOUND)
+        except Mapping_Data.DoesNotExist as mdne:
+            return Response({"error": f"Mapping_Data not found: {str(mdne)}"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            # Log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error: {str(e)}")
+            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -19,6 +19,7 @@ class BackupDataView(APIView):
             with transaction.atomic():
                 for item in incoming_data:
                     list_id = item.get("list_id")
+                    category = item.get("category")
                     true_answer = item.get("true_answer")
                     order = item.get("order")
 
@@ -34,13 +35,17 @@ class BackupDataView(APIView):
                         backup_obj.true_answer = []
                     if not isinstance(backup_obj.order, list):
                         backup_obj.order = []
+                    if not isinstance(backup_obj.category, list):
+                        backup_obj.category = []
 
                     backup_obj.true_answer.append(true_answer)
+                    backup_obj.category.append(category)
                     backup_obj.order.append(order)
                     backup_obj.save()
 
                     backups_saved.append({
                         "list_id": backup_obj.list_id,
+                        "category": backup_obj.category,
                         "true_answer": backup_obj.true_answer,
                         "order": backup_obj.order
                     })
