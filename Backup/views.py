@@ -13,7 +13,7 @@ class BackupDataView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             incoming_data = request.data
-
+            print(incoming_data)
             if not isinstance(incoming_data, list):
                 return Response({"error": "Payload format must be a list of dictionaries."},
                                 status=status.HTTP_400_BAD_REQUEST)
