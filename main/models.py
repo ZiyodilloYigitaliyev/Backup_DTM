@@ -5,12 +5,10 @@ class ImageData(models.Model):
     image_url = models.URLField(unique=True)
     created_at = models.DateTimeField(auto_now_add=True)  # Yaratilgan vaqt
 
-    def save(self, *args, **kwargs):
-        ImageData.objects.all().delete()  # Eski ma’lumotlarni o‘chiramiz
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return self.image_url
+
+
 
 class Coordinate(models.Model):
     image = models.ForeignKey(ImageData, on_delete=models.CASCADE, related_name="coordinates")
