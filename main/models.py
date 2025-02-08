@@ -11,12 +11,11 @@ class Coordinate(models.Model):
     x = models.IntegerField()
     y = models.IntegerField()
 
-from django.utils.translation import gettext_lazy as _
-from phonenumber_field.modelfields import PhoneNumberField  # django-phonenumber-field paketidan foydalanayotgan bo‘lsangiz
+
 
 class result(models.Model):
     file = models.URLField()
-    phone = PhoneNumberField(_("Phone Number"), unique=True)  # Telefon raqami maydoni
+    phone = models.IntegerField()
     student_id = models.CharField(max_length=10)
     total_score = models.FloatField()
 
