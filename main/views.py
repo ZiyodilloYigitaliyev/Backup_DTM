@@ -8,7 +8,7 @@ from .models import ProcessedData, ProcessedTest, ProcessedTestResult, Mapping_D
 class ResultAPIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
-            # 1. So'rovdan image_url va coordinates ma'lumotlarini olish
+            # 1. Requestdan image_url va coordinates ma'lumotlarini olish
             image_url = request.data.get("image_url")
             coordinates = request.data.get("coordinates", [])
             if not image_url or not coordinates:
@@ -19,7 +19,7 @@ class ResultAPIView(APIView):
             
             # 2. Koordinatalarning to'g'ri formatda ekanligini tekshirish
             valid_coords = [
-                coord for coord in coordinates 
+                coord for coord in coordinates
                 if isinstance(coord, dict) and "x" in coord and "y" in coord
             ]
             if not valid_coords:
@@ -29,10 +29,11 @@ class ResultAPIView(APIView):
                 )
             
             # 3. ProcessedData dan ma'lumotlarni kategoriya bo'yicha yig'ish:
-            #    Bizda uchta kategoriya: "user_id", "phone", "answer"
+            #    - "user_id", "phone", "answer"
             results = {"user_id": [], "phone": [], "answer": []}
             for coord in valid_coords:
-                x, y = coord["x"], coord["y"]
+                x = coord["x"]
+                y = coord["y"]
                 matched_data = ProcessedData.objects.filter(
                     Q(x_coord__range=(x - 5, x + 5)) & Q(y_coord__range=(y - 5, y + 5))
                 ).order_by("x_coord")
@@ -51,7 +52,8 @@ class ResultAPIView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # 4. "user_id" ni aniqlash: "user_id" kategoriyasidagi barcha data_type qiymatlarini birlashtiramiz
+            # 4. "user_id" ni aniqlash:
+            #    "user_id" kategoriyasidagi barcha data_type larni birlashtirib, int ga aylantiramiz.
             user_results = sorted(results["user_id"], key=lambda item: item["x_coord"])
             user_id_str = "".join([res["data_type"] for res in user_results]) if user_results else None
             if not user_id_str:
@@ -59,8 +61,6 @@ class ResultAPIView(APIView):
                     {"error": "User ID ma'lumotlari topilmadi!"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Agar user_id raqamli bo'lsa, int ga aylantiramiz
             try:
                 user_id_int = int(user_id_str)
             except ValueError:
@@ -69,8 +69,7 @@ class ResultAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # 5. Mapping_Data modelidan user_id uchun mos yozuvni olish 
-            #    (ProcessedData dan hosil bo'lgan user_id, Mapping_Data dagi list_id bilan solishtiriladi)
+            # 5. Mapping_Data modelidan user_id uchun mos yozuvni olish (list_id bilan solishtirish)
             mapping_user = Mapping_Data.objects.filter(list_id=user_id_int).first()
             if not mapping_user:
                 return Response(
@@ -83,22 +82,25 @@ class ResultAPIView(APIView):
             phone_number = "".join([res["data_type"] for res in phone_results]) if phone_results else None
             
             # 7. ProcessedTest obyektini yaratish yoki yangilash
+            #    Yangi modelda file_url va image_url maydonlari mavjud
             processed_test, created = ProcessedTest.objects.get_or_create(
                 phone_number=phone_number if phone_number else "Unknown",
                 defaults={
                     "file_url": image_url,
+                    "image_url": image_url,
                     "total_score": 0,
                 }
             )
             if not created:
                 processed_test.file_url = image_url
+                processed_test.image_url = image_url
                 processed_test.total_score = 0
                 processed_test.save()
             
-            # 8. Javoblarni tekshirish va Mapping_Data bilan solishtirish
+            # 8. Javoblarni tekshirish va Mapping_Data bilan taqqoslash
             mapped_answers = []
             for answer_data in results["answer"]:
-                # Avvalo, ProcessedData dagi data_type qiymatini raqamga aylantiramiz
+                # ProcessedData dagi data_type ni raqamga aylantirish
                 try:
                     data_type_int = int(answer_data["data_type"])
                 except ValueError:
@@ -106,7 +108,6 @@ class ResultAPIView(APIView):
                         {"error": "ProcessedData dagi data_type raqamli emas!"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
-                
                 # Mapping_Data modelidan, order maydoni data_type_int ga teng yozuvni topamiz
                 mapping_answer = Mapping_Data.objects.filter(order=data_type_int).first()
                 if not mapping_answer:
@@ -114,16 +115,13 @@ class ResultAPIView(APIView):
                         {"error": "Mapping_Data da order ga mos yozuv topilmadi!"},
                         status=status.HTTP_404_NOT_FOUND
                     )
-                
-                # Endi, ProcessedData dagi answer qiymatini Mapping_Data dagi true_answer bilan solishtiramiz
                 if answer_data["answer"] is None:
                     return Response(
                         {"error": "Answer maydoni bo'sh!"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
+                # ProcessedData dagi answer qiymatini Mapping_Data dagi true_answer bilan solishtirish
                 is_correct = (answer_data["answer"].strip() == mapping_answer.true_answer.strip())
-                
-                # Javob to'g'ri bo'lsa, kategoriya (mapping_answer.category) ga qarab ball beramiz
                 score = 0
                 if is_correct:
                     if mapping_answer.category and mapping_answer.category.startswith("Majburiy_fan"):
@@ -132,8 +130,7 @@ class ResultAPIView(APIView):
                         score = 2.1
                     elif mapping_answer.category and mapping_answer.category.startswith("Fan_2"):
                         score = 3.1
-                
-                # ProcessedTestResult obyektini yaratish (order maydoni sifatida mapping_answer.order saqlanadi)
+                # ProcessedTestResult ni yaratish (order sifatida mapping_answer.order saqlanadi)
                 ProcessedTestResult.objects.create(
                     student=processed_test,
                     student_answer=answer_data["answer"],
@@ -154,7 +151,8 @@ class ResultAPIView(APIView):
             processed_test.save()
             
             response_data = {
-                "image_url": image_url,
+                "file_url": processed_test.file_url,
+                "image_url": processed_test.image_url,
                 "user_id": user_id_int,
                 "phone_number": phone_number,
                 "answers": mapped_answers,
