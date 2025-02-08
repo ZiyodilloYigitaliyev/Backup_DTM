@@ -6,7 +6,7 @@ class ImageData(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)  # Yaratilgan vaqt
 
     def __str__(self):
-        return self.image_url
+        return self.created_at
 
 
 
