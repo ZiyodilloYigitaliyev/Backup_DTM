@@ -1,160 +1,172 @@
-from django.db.models import Q
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
-from .models import ProcessedData, Mapping_Data, ProcessedTest, ProcessedTestResult
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db.models import Q
 import logging
+from .models import ProcessedData, ProcessedTest, ProcessedTestResult, Mapping_Data
+
 class ResultAPIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
-            # Requestdan image_url va coordinates ma'lumotlarini olish
+            # 1. So'rovdan image_url va coordinates ma'lumotlarini olish
             image_url = request.data.get("image_url")
             coordinates = request.data.get("coordinates", [])
-
             if not image_url or not coordinates:
                 return Response(
                     {"error": "image_url va coordinates majburiy!"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_400_BAD_REQUEST
                 )
-
-            # Koordinatalarni tekshirish
+            
+            # 2. Koordinatalarning to'g'ri formatda ekanligini tekshirish
             valid_coords = [
-                coord for coord in coordinates if isinstance(coord, dict) and "x" in coord and "y" in coord
+                coord for coord in coordinates 
+                if isinstance(coord, dict) and "x" in coord and "y" in coord
             ]
-
             if not valid_coords:
                 return Response(
-                    {"error": "coordinates noto‘g‘ri formatda!"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"error": "coordinates noto'g'ri formatda!"},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
-
-            # Kategoriya bo'yicha natijalarni yig'ish
-            results = {
-                "user_id": [],
-                "phone": [],
-                "answer": [],
-            }
-
+            
+            # 3. ProcessedData dan ma'lumotlarni kategoriya bo'yicha yig'ish:
+            #    Bizda uchta kategoriya: "user_id", "phone", "answer"
+            results = {"user_id": [], "phone": [], "answer": []}
             for coord in valid_coords:
                 x, y = coord["x"], coord["y"]
-
-                # ProcessedData bazasidan mos keluvchi koordinatalarni qidirish
                 matched_data = ProcessedData.objects.filter(
                     Q(x_coord__range=(x - 5, x + 5)) & Q(y_coord__range=(y - 5, y + 5))
-                ).order_by("x_coord")  # Min x bo‘yicha tartib
-
+                ).order_by("x_coord")
                 for data in matched_data:
                     if data.category in results:
                         results[data.category].append({
-                            "data_type": data.data_type,
+                            "data_type": data.data_type,   # Bu qiymat keyinchalik Mapping_Data.order bilan solishtiriladi
                             "x_coord": data.x_coord,
                             "y_coord": data.y_coord,
                             "answer": data.answer,
                         })
-
-            # Agar hech qanday moslik topilmasa
+            
             if not any(results.values()):
                 return Response(
                     {"error": "Mos keluvchi koordinatalar topilmadi!"},
-                    status=status.HTTP_404_NOT_FOUND,
+                    status=status.HTTP_404_NOT_FOUND
                 )
-
-            # `matching` uchun list_idni aniqlash
-            list_id_results = sorted(results["user_id"], key=lambda item: item["x_coord"])
-            list_id = "".join([res["data_type"] for res in list_id_results]) if list_id_results else None
-
-            # `phone` uchun telefon raqamni aniqlash
+            
+            # 4. "user_id" ni aniqlash: "user_id" kategoriyasidagi barcha data_type qiymatlarini birlashtiramiz
+            user_results = sorted(results["user_id"], key=lambda item: item["x_coord"])
+            user_id_str = "".join([res["data_type"] for res in user_results]) if user_results else None
+            if not user_id_str:
+                return Response(
+                    {"error": "User ID ma'lumotlari topilmadi!"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Agar user_id raqamli bo'lsa, int ga aylantiramiz
+            try:
+                user_id_int = int(user_id_str)
+            except ValueError:
+                return Response(
+                    {"error": "User ID raqamli formatda emas!"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 5. Mapping_Data modelidan user_id uchun mos yozuvni olish 
+            #    (ProcessedData dan hosil bo'lgan user_id, Mapping_Data dagi list_id bilan solishtiriladi)
+            mapping_user = Mapping_Data.objects.filter(list_id=user_id_int).first()
+            if not mapping_user:
+                return Response(
+                    {"error": "Mapping_Data da user_id uchun mos yozuv topilmadi!"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # 6. "phone" kategoriyasidagi ma'lumotlardan telefon raqamni aniqlash
             phone_results = sorted(results["phone"], key=lambda item: item["x_coord"])
             phone_number = "".join([res["data_type"] for res in phone_results]) if phone_results else None
-
-            # `answer` uchun javoblarni aniqlash
-            answers = results["answer"]
-            mapped_answers = []
-
-            # ProcessedTest obyektini bir marta yaratish
-            processed_test = ProcessedTest.objects.create(
-                file_url=image_url,
+            
+            # 7. ProcessedTest obyektini yaratish yoki yangilash
+            processed_test, created = ProcessedTest.objects.get_or_create(
                 phone_number=phone_number if phone_number else "Unknown",
-                total_score=0,  # Yakuniy ballni keyinroq yangilash
+                defaults={
+                    "file_url": image_url,
+                    "total_score": 0,
+                }
             )
-
-            for answer_data in answers:
-                answer = answer_data["answer"]
-                is_correct = False
+            if not created:
+                processed_test.file_url = image_url
+                processed_test.total_score = 0
+                processed_test.save()
+            
+            # 8. Javoblarni tekshirish va Mapping_Data bilan solishtirish
+            mapped_answers = []
+            for answer_data in results["answer"]:
+                # Avvalo, ProcessedData dagi data_type qiymatini raqamga aylantiramiz
+                try:
+                    data_type_int = int(answer_data["data_type"])
+                except ValueError:
+                    return Response(
+                        {"error": "ProcessedData dagi data_type raqamli emas!"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Mapping_Data modelidan, order maydoni data_type_int ga teng yozuvni topamiz
+                mapping_answer = Mapping_Data.objects.filter(order=data_type_int).first()
+                if not mapping_answer:
+                    return Response(
+                        {"error": "Mapping_Data da order ga mos yozuv topilmadi!"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+                # Endi, ProcessedData dagi answer qiymatini Mapping_Data dagi true_answer bilan solishtiramiz
+                if answer_data["answer"] is None:
+                    return Response(
+                        {"error": "Answer maydoni bo'sh!"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                is_correct = (answer_data["answer"].strip() == mapping_answer.true_answer.strip())
+                
+                # Javob to'g'ri bo'lsa, kategoriya (mapping_answer.category) ga qarab ball beramiz
                 score = 0
-
-                # Mapping_Data modeli orqali tekshirish
-                mapping_data_obj = None
-                if mapping_data_obj and mapping_data_obj.order:
-                    try:
-                        # Javobni `order` ro'yxatida borligini tekshirish
-                        is_correct = answer_data["order"] in mapping_data_obj.order
-                    except (ValueError, TypeError):
-                        is_correct = False
-                else:
-                    is_correct = False
-
-                if mapping_data_obj:
-                    # Javobni `order` bo'yicha tekshirish
-                    try:
-                        answer_index = mapping_data_obj.order.index(answer_data["order"])
-                        if answer_index >= 0:
-                            is_correct = True
-                    except ValueError:
-                        is_correct = False
-
-                    # Kategoriyaga qarab ballni aniqlash
-                    if mapping_data_obj.categorys.startswith("Majburiy_fan"):
+                if is_correct:
+                    if mapping_answer.category and mapping_answer.category.startswith("Majburiy_fan"):
                         score = 1.1
-                    elif mapping_data_obj.categorys.startswith("Fan_1"):
+                    elif mapping_answer.category and mapping_answer.category.startswith("Fan_1"):
                         score = 2.1
-                    elif mapping_data_obj.categorys.startswith("Fan_2"):
+                    elif mapping_answer.category and mapping_answer.category.startswith("Fan_2"):
                         score = 3.1
-
-                    # Agar javob noto'g'ri bo'lsa, ballni 0 qilish
-                    if not is_correct:
-                        score = 0
-
-                # Har bir javobni ProcessedTestResult modeliga saqlash
-                result = ProcessedTestResult.objects.create(
+                
+                # ProcessedTestResult obyektini yaratish (order maydoni sifatida mapping_answer.order saqlanadi)
+                ProcessedTestResult.objects.create(
                     student=processed_test,
-                    student_answer=answer,
+                    student_answer=answer_data["answer"],
+                    order=mapping_answer.order,
                     is_correct=is_correct,
                     score=score,
                 )
                 mapped_answers.append({
-                    "answer": answer,
+                    "answer": answer_data["answer"],
+                    "order": mapping_answer.order,
                     "is_correct": is_correct,
                     "score": score,
                 })
-
-            # Yakuniy ballni yangilash
-            total_score = sum([res["score"] for res in mapped_answers if res["is_correct"]])
+            
+            # 9. Yakuniy ballni hisoblash va ProcessedTest obyektini yangilash
+            total_score = sum(item["score"] for item in mapped_answers if item["is_correct"])
             processed_test.total_score = total_score
             processed_test.save()
-
-            # Yakuniy javob
+            
             response_data = {
                 "image_url": image_url,
-                "list_id": list_id,
+                "user_id": user_id_int,
                 "phone_number": phone_number,
                 "answers": mapped_answers,
                 "total_score": total_score,
-                "message": "Koordinatalar muvaffaqiyatli qayta ishlangan!",
+                "message": "Koordinatalar muvaffaqiyatli qayta ishlangan!"
             }
-
             return Response(response_data, status=status.HTTP_201_CREATED)
-
-
-        except ValueError as ve:
-            return Response({"error": f"ValueError: {str(ve)}"}, status=status.HTTP_400_BAD_REQUEST)
-        except ProcessedData.DoesNotExist as pdne:
-            return Response({"error": f"ProcessedData not found: {str(pdne)}"}, status=status.HTTP_404_NOT_FOUND)
-        except Mapping_Data.DoesNotExist as mdne:
-            return Response({"error": f"Mapping_Data not found: {str(mdne)}"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            # Log the error for debugging
         
+        except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error(f"Unexpected error: {str(e)}")
-            return Response({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "An unexpected error occurred."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

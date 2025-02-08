@@ -20,18 +20,18 @@ class ProcessedTest(models.Model):
     file_url = models.URLField(max_length=500, default=False)
     phone_number = models.CharField(max_length=20, unique=True, default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    student_id = models.BigAutoField(primary_key=True)
+    student_id = models.IntegerField(primary_key=True)
     total_score = models.FloatField(default=0)
     
-    def __str__(self):
+    def __int__(self):
         return self.student_id
     
 class ProcessedTestResult(models.Model):
     student = models.ForeignKey(ProcessedTest, related_name='results', on_delete=models.CASCADE)
     student_answer = models.CharField(max_length=10)
+    order = models.IntegerField(null=True, blank=True)
     is_correct = models.BooleanField(default=False)
     processed_at = models.DateTimeField(auto_now_add=True)
     score = models.FloatField(default=0)
-    def __str__(self):
-        return self.student_answer
+    
  
