@@ -1,9 +1,11 @@
 from django.http import JsonResponse
-from django.views import View
 import json
 from .serializers import MappingDataSerializer, ProcessedDataSerializer
 from Backup.models import Mapping_Data
 from main.models import ProcessedData
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 class ProcessDataView(APIView):
     def post(self, request, *args, **kwargs):
