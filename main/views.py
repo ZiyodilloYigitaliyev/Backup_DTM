@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import ProcessedData, PhoneNumber
+from .models import ProcessedData
 
 class ProcessDataView(APIView):
     def post(self, request, *args, **kwargs):
@@ -14,16 +14,12 @@ class ProcessDataView(APIView):
         if not isinstance(incoming_data, list):
             return Response({"error": "Invalid format for 'data'. Expected a list."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if phone_number:
-            phone_entry, created = PhoneNumber.objects.get_or_create(phone_number=phone_number)
-
         response_data = []
 
         for item in incoming_data:
             if not isinstance(item, dict):
                 return Response({"error": "Each item in 'data' must be a dictionary."}, status=status.HTTP_400_BAD_REQUEST)
 
-            category = item.get("category", "unknown")
             answer = item.get("answer", "")
             incoming_order = item.get("order")
             status_flag = item.get("status", False)
@@ -31,7 +27,6 @@ class ProcessDataView(APIView):
             processed_entry = ProcessedData.objects.create(
                 list_id=list_id,
                 phone_number=phone_number,
-                category=category,
                 order=incoming_order,
                 answer=answer,
                 status=status_flag
@@ -39,7 +34,6 @@ class ProcessDataView(APIView):
             response_data.append({
                 "list_id": list_id,
                 "phone_number": phone_number,
-                "category": category,
                 "order": incoming_order,
                 "answer": answer,
                 "status": status_flag
