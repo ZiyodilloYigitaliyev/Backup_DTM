@@ -10,8 +10,10 @@ from rest_framework import status
 class ProcessDataView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = ProcessedDataSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        if serializer.is_valid():
+            return Response({"success": "OK"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         validated_data = serializer.validated_data
         list_id = validated_data['list_id']
