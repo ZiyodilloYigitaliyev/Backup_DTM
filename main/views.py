@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views import View
 import json
-from serializers import MappingDataSerializer, ProcessedDataSerializer
+from .serializers import MappingDataSerializer, ProcessedDataSerializer
 from Backup.models import Mapping_Data
 from main.models import ProcessedData
 
