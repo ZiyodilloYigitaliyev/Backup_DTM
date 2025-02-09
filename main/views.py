@@ -9,7 +9,7 @@ from rest_framework import status
 
 class ProcessDataView(APIView):
     def post(self, request, *args, **kwargs):
-        serializer = YourSerializer(data=request.data)
+        serializer = ProcessedDataSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
