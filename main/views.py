@@ -5,7 +5,7 @@ from .serializers import MappingDataSerializer, ProcessedDataSerializer
 from Backup.models import Mapping_Data
 from main.models import ProcessedData
 
-class ProcessDataView(views.APIView):
+class ProcessDataView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = ProcessDataSerializer(data=request.data)
         if not serializer.is_valid():
