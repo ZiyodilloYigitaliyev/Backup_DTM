@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import ProcessDataView
+from .views import ProcessedDataViewSet
 
 urlpatterns = [
-   path("upload/",  ProcessDataView.as_view(), name="upload"),
+   path("upload/",  ProcessedDataViewSet.as_view(), name="upload"),
 ]
