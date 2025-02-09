@@ -1,37 +1,22 @@
-from rest_framework import serializers
-from .models import ImageData, Coordinate
+from rest_framework import serializers, views, status
+from rest_framework.response import Response
+from .models import ProcessedData
+from Backup.models import Mapping_Data
 
-class CoordinateSerializer(serializers.ModelSerializer):
+class MappingDataSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Coordinate
-        fields = ["x", "y"]
+        model = Mapping_Data
+        fields = ('id', 'list_id', 'category', 'true_answer', 'order')
 
-class ImageDataSerializer(serializers.ModelSerializer):
-    coordinates = CoordinateSerializer(many=True)
-
+class ProcessedDataSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ImageData
-        fields = ["image_url", "coordinates"]
+        model = ProcessedData
+        fields = ('id', 'list_id', 'category', 'order', 'answer', 'status')
 
-    def create(self, validated_data):
-        coordinates_data = validated_data.pop("coordinates", [])
-        
-        # Eski image_url va koordinatalarni o‘chirib tashlaymiz
-        ImageData.objects.all().delete()
+class IncomingDataSerializer(serializers.Serializer):
+    answer = serializers.CharField(max_length=255)
+    order = serializers.IntegerField()
 
-        # Yangi image_url qo‘shamiz
-        image_instance = ImageData.objects.create(**validated_data)
-
-        # Koordinatalarni qo‘shamiz
-        for coord in coordinates_data:
-            Coordinate.objects.create(image=image_instance, **coord)
-
-        return image_instance
-    
-from rest_framework import serializers
-from .models import result  # Model nomingiz "result" deb qabul qilamiz
-
-class ResultSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = result
-        fields = '__all__'
+class ProcessDataSerializer(serializers.Serializer):
+    list_id = serializers.IntegerField()
+    data = IncomingDataSerializer(many=True)

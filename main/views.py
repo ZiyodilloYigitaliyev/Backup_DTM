@@ -1,39 +1,44 @@
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from django.db.models import Q
-import logging
-# from .models import ProcessedData, ProcessedTest, ProcessedTestResult, Mapping_Data
-from rest_framework.decorators import api_view
-from .models import ImageData
-from .serializers import ImageDataSerializer, ResultSerializer
+from django.http import JsonResponse
+from django.views import View
+import json
+from serializers import MappingDataSerializer, ProcessedDataSerializer
+from Backup.models import Mapping_Data
+from main.models import ProcessedData
 
-@api_view(["POST"])
-def upload_image(request): 
-    serializer = ImageDataSerializer(data=request.data)
-    
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"message": "Image data saved successfully"}, status=status.HTTP_201_CREATED)
-    
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class ProcessDataView(views.APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = ProcessDataSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-class ResultRetrieveView(APIView):
-    """
-    GET so'rovi orqali query param 'student_id' keladi.
-    Agar bazada shu student_id bo'yicha natija topilsa, file URL, id va telefon raqamini JSON formatda yuboradi.
-    """
-    def get(self, request, format=None):
-        student_id = request.query_params.get("student_id")
-        if not student_id:
-            return Response({"error": "Query parameter 'student_id' talab qilinadi."},
-                            status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            obj = result.objects.get(student_id=student_id)
-        except result.DoesNotExist:
-            return Response({"error": "Berilgan student_id bo'yicha natija topilmadi."},
-                            status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ResultSerializer(obj)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        validated_data = serializer.validated_data
+        list_id = validated_data['list_id']
+        incoming_data = validated_data['data']
+        phone_number = validated_data['phone_number']
+
+        # Save phone number
+        PhoneNumber.objects.create(phone_number=phone_number)
+
+        existing_data = Mapping_Data.objects.filter(list_id=list_id)
+        response_data = []
+
+        for item in incoming_data:
+            answer = item['answer']
+            incoming_order = item['order']
+
+            matching_data = existing_data.filter(order=incoming_order)
+
+            for match in matching_data:
+                status = match.true_answer == answer
+
+                processed_entry = ProcessedData.objects.create(
+                    list_id=list_id,
+                    category=match.category,
+                    order=match.order,  # Save order from Mapping_Data
+                    answer=answer,
+                    status=status
+                )
+
+                response_data.append(ProcessedDataSerializer(processed_entry).data)
+
+        return Response({"processed_data": response_data}, status=status.HTTP_200_OK)
