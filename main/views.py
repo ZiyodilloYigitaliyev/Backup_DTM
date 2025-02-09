@@ -9,7 +9,7 @@ from rest_framework import status
 
 class ProcessDataView(APIView):
     def post(self, request, *args, **kwargs):
-        serializer = ProcessDataSerializer(data=request.data)
+        serializer = ProcessedDataSerializer(data=request.data)
         if not serializer.is_valid():
             return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
