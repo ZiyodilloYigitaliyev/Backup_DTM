@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.timezone import now
 from Backup.models import Mapping_Data
+import uuid
 
 class Result_Data(models.Model):
     list_id = models.IntegerField(null=True, blank=True)
@@ -19,3 +20,17 @@ class Data(models.Model):
 
     def __str__(self):
         return f"Data: Order {self.order} - Value {self.value} - Status {self.status}"
+
+class PDFResult(models.Model):
+    user_id = models.CharField("Foydalanuvchi ID", max_length=255)
+    phone = models.CharField("Telefon", max_length=20)
+    # PDF fayl URL sini saqlash. PDF fayl o‘zida saqlanmaydi.
+    pdf_url = models.URLField("PDF URL", blank=True, null=True)
+    created_at = models.DateTimeField("Yaratilgan vaqt", auto_now_add=True)
+
+    def __str__(self):
+        return f"PDFResult - {self.user_id}"
+
+    class Meta:
+        verbose_name = "PDF Natija"
+        verbose_name_plural = "PDF Natijalar"

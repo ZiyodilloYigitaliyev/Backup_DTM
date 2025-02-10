@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import Result_Data, Data
-
+from django.utils.html import format_html
+from .models import PDFResult
 
 # Data modeli uchun inline admin - Result_Data bilan bog'liq Data yozuvlarini bir joyda ko'rish uchun
 class DataInline(admin.TabularInline):
@@ -30,3 +31,20 @@ class DataAdmin(admin.ModelAdmin):
     ordering = ('user_id', 'order')
 
 admin.site.register(Data, DataAdmin)
+
+@admin.register(PDFResult)
+class PDFResultAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user_id', 'phone', 'pdf_link', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('user_id', 'phone')
+    ordering = ('-created_at',)
+    readonly_fields = ('pdf_url', 'created_at')
+
+    def pdf_link(self, obj):
+        """
+        Agar pdf_url mavjud bo‘lsa, admin panelida bosish orqali PDF-ni ochish uchun link ko‘rsatamiz.
+        """
+        if obj.pdf_url:
+            return format_html('<a href="{}" target="_blank">PDF-ni ochish</a>', obj.pdf_url)
+        return "-"
+    pdf_link.short_description = "PDF Fayl URL"

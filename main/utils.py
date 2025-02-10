@@ -163,23 +163,20 @@ def generate_pdf(data):
     # WeasyPrint yordamida PDF hosil qilamiz (base_url parametrini kiritamiz)
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
 
-    # PDFResult modeliga yangi yozuv yaratamiz
-    pdf_result = PDFResult(
-        user_id=data['id'],
-        phone=data['phone']
-    )
-    # Random nom bilan PDF faylini saqlaymiz (upload_to funksiyasi papka qo'shmaydi)
+    # Endi pdf_bytes ni S3 bucket-ga yuklaymiz, lekin modelga pdf faylni saqlamaymiz
     random_filename = f"{uuid.uuid4()}.pdf"
-    pdf_result.pdf_file.save(random_filename, ContentFile(pdf_bytes))
-    pdf_result.save()
+    default_storage.save(random_filename, ContentFile(pdf_bytes))
+    pdf_url = default_storage.url(random_filename)
 
-    # Yuklangan PDF faylning S3 bucket-dagi URL sini olish va uni modeldagi pdf_url maydoniga yozamiz
-    pdf_url = pdf_result.pdf_file.url
-    pdf_result.pdf_url = pdf_url
-    pdf_result.save(update_fields=['pdf_url'])
-
-    # Endi modeldagi pdf_url maydoni orqali S3 bucketdagi URL saqlangan bo‘ladi.
+    # PDFResult modeliga faqat URL saqlanadi
+    pdf_result = PDFResult.objects.create(
+        user_id=data['id'],
+        phone=data['phone'],
+        pdf_url=pdf_url
+    )
     return pdf_url
+
+# Endi .env faylimizda S3 uchun kerakli sozlamalarni saqlaymiz:
 
 load_dotenv()
 
