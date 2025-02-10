@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import ProcessedDataViewSet
+from .views import ResultDataCreateAPIView
 
 urlpatterns = [
-   path("upload/",  ProcessedDataViewSet.as_view(), name="upload"),
+   path("upload/",  ResultDataCreateAPIView.as_view(), name="upload"),
 ]
