@@ -1,10 +1,14 @@
 from rest_framework.views import APIView
+from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Mapping_Data, Result_Data, Data
 from .serializers import ResultDataInputSerializer
 
 class ResultDataCreateAPIView(APIView):
+    # Faqat JSON ma'lumotlarni qabul qilish uchun JSONParser ni o'rnatish
+    parser_classes = [JSONParser]
+
     def post(self, request):
         serializer = ResultDataInputSerializer(data=request.data)
         if serializer.is_valid():
