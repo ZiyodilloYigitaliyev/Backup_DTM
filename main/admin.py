@@ -1,14 +1,5 @@
 from django.contrib import admin
-from .models import Mapping_Data, Result_Data, Data
-
-# Mapping_Data uchun admin sozlamalari
-class Mapping_DataAdmin(admin.ModelAdmin):
-    list_display = ('list_id', 'category', 'true_answer', 'order')
-    list_filter = ('category',)
-    search_fields = ('list_id', 'category', 'true_answer', 'order')
-    ordering = ('list_id', 'order')
-
-admin.site.register(Mapping_Data, Mapping_DataAdmin)
+from .models import Result_Data, Data
 
 
 # Data modeli uchun inline admin - Result_Data bilan bog'liq Data yozuvlarini bir joyda ko'rish uchun
