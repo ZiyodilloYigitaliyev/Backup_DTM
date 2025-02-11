@@ -1,15 +1,25 @@
 import uuid
+import os
 from weasyprint import HTML
 from django.core.files.base import ContentFile
-from .models import PDFResult
-import os
+from django.core.files.storage import default_storage  # Import qo'shildi
 from dotenv import load_dotenv
+from .models import PDFResult
+
+# .env faylini yuklash (Eslatma: S3 sozlamalari odatda Django settings.py da bo'lishi lozim)
+load_dotenv()
+
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
+
 
 def generate_pdf(data):
-    # Rasmni toʻgʻridan-toʻgʻri URL orqali olamiz
+    # Rasmni URL orqali olamiz
     image_src = data['image']
 
-    # Kategoriyalar bo‘yicha testlarni ajratamiz va faqat status "true" bo‘lganlar uchun ball qo‘shamiz
+    # Test natijalarini kategoriyalar bo‘yicha ajratamiz va ball hisoblaymiz
     majburiy_results = []
     fan1_results = []
     fan2_results = []
@@ -35,7 +45,7 @@ def generate_pdf(data):
 
     overall_total = majburiy_total + fan1_total + fan2_total
 
-    # Har bir natijalarni HTML formatida shakllantiramiz (true uchun yashil, false uchun qizil belgi)
+    # Natijalarni HTML formatida shakllantiramiz
     def build_results_html(results):
         html = ""
         for test in results:
@@ -47,7 +57,7 @@ def generate_pdf(data):
             html += f"<div class='result'>{test.get('number')}. {test.get('option')} {symbol_html}</div>"
         return html
 
-    # Har bir kategoriya uchun natija ustunlarini shartli ravishda yaratamiz
+    # Har bir kategoriya uchun natijalar ustunini yaratamiz
     columns_html = ""
     if majburiy_results:
         majburiy_html = build_results_html(majburiy_results)
@@ -74,7 +84,7 @@ def generate_pdf(data):
          </div>
         """
 
-    # HTML shablon: 2 ta asosiy ustun (1 - rasm, 2 - natijalar)
+    # HTML shabloni: 1-ustunda rasm, 2-ustunda natijalar
     html_content = f"""
     <html>
     <head>
@@ -160,27 +170,19 @@ def generate_pdf(data):
     </html>
     """
 
-    # WeasyPrint yordamida PDF hosil qilamiz (base_url parametrini kiritamiz)
+    # WeasyPrint yordamida PDF hosil qilamiz
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
 
-    # Endi pdf_bytes ni S3 bucket-ga yuklaymiz, lekin modelga pdf faylni saqlamaymiz
+    # PDF faylni S3 bucket-ga yuklaymiz
     random_filename = f"{uuid.uuid4()}.pdf"
     default_storage.save(random_filename, ContentFile(pdf_bytes))
     pdf_url = default_storage.url(random_filename)
 
-    # PDFResult modeliga faqat URL saqlanadi
+    # PDFResult modeliga PDF URL ni saqlaymiz
     pdf_result = PDFResult.objects.create(
         user_id=data['id'],
         phone=data['phone'],
         pdf_url=pdf_url
     )
     return pdf_url
-
-# Endi .env faylimizda S3 uchun kerakli sozlamalarni saqlaymiz:
-
-load_dotenv()
-
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
+# End of generate_pdf function
