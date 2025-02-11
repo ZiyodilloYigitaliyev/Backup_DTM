@@ -91,13 +91,18 @@ class ResultDataCreateAPIView(APIView):
 
 # PDF natijani olish uchun GET view
 class PDFResultRetrieveAPIView(APIView):
-    def get(self, request, user_id):
+    def get(self, request, *args, **kwargs):
+        user_id = request.query_params.get('user_id')  # user_id ni query parametrlardan olish
+        
+        if not user_id:
+            return Response({"error": "user_id parametri talab qilinadi."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             pdf_result = PDFResult.objects.get(user_id=user_id)
             data = {
                 "user_id": pdf_result.user_id,
                 "phone": pdf_result.phone,
-                "pdf_url": pdf_result.pdf_url  # To'g'ri maydon nomi
+                "pdf_url": pdf_result.pdf_url  # To‘g‘ri maydon nomi
             }
             return Response(data, status=status.HTTP_200_OK)
         except PDFResult.DoesNotExist:
