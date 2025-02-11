@@ -7,10 +7,10 @@ from .models import PDFResult
 class DataInline(admin.TabularInline):
     model = Data
     extra = 0  # Qo'shimcha bo'sh formalarni ko'rsatmaslik uchun
+    can_delete = False  # Inline yozuvlarni alohida o'chirish opsiyasini o'chirib qo'yamiz
     fields = ('order', 'value', 'category', 'status')
     readonly_fields = ('category', 'status')  
     # Eslatma: category va status avtomatik hisoblanadigan maydonlar bo'lsa, ularni read-only qilishingiz mumkin.
-
 
 # Result_Data modeli uchun admin sozlamalari
 class Result_DataAdmin(admin.ModelAdmin):
@@ -20,7 +20,6 @@ class Result_DataAdmin(admin.ModelAdmin):
     inlines = [DataInline]  # Result_Data-ga tegishli Data yozuvlarini inline ko'rsatish
 
 admin.site.register(Result_Data, Result_DataAdmin)
-
 
 # Data modeli uchun admin sozlamalari
 class DataAdmin(admin.ModelAdmin):
