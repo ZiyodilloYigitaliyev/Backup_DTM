@@ -1,17 +1,17 @@
 import uuid
-from weasyprint import HTML
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-from .models import PDFResult
 import os
+from io import BytesIO
+import boto3
+from weasyprint import HTML
 from dotenv import load_dotenv
+from .models import PDFResult
 
 load_dotenv()
 
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME') or 'us-east-1'
 
 def generate_pdf(data):
     image_src = data['image']
@@ -162,15 +162,39 @@ def generate_pdf(data):
     </html>
     """
 
+    # PDF faylini yaratamiz
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
 
+    # Yaratilgan fayl uchun noyob nom (pdf-results papkasiga saqlanadi)
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
-    default_storage.save(random_filename, ContentFile(pdf_bytes))
-    pdf_url = default_storage.url(random_filename)
 
+    # BytesIO obyektiga aylantiramiz
+    pdf_file_obj = BytesIO(pdf_bytes)
+
+    # boto3 S3 clientini yaratamiz
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_S3_REGION_NAME
+    )
+
+    # PDF faylini S3 bucketga, "pdf-results/" papkasiga yuklaymiz
+    s3_client.upload_fileobj(
+        pdf_file_obj,
+        AWS_STORAGE_BUCKET_NAME,
+        random_filename,
+        ExtraArgs={'ContentType': 'application/pdf'}
+    )
+
+    # Yuklangan faylga URL olish (agar bucket ommaga ochiq bo'lsa)
+    pdf_url = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{random_filename}"
+
+    # PDF URL ni ma'lumotlar bazasiga saqlaymiz
     PDFResult.objects.create(
         user_id=data['id'],
         phone=data['phone'],
         pdf_url=pdf_url
     )
+
     return pdf_url
