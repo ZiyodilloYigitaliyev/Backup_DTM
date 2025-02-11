@@ -173,12 +173,11 @@ def generate_pdf(data):
     # WeasyPrint yordamida PDF hosil qilamiz
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
 
-    # PDF faylni S3 bucket-ga yuklaymiz
-    random_filename = f"{uuid.uuid4()}.pdf"
+    # "pdf-results/" papkasiga yuklash uchun fayl nomiga papka nomini qo'shamiz:
+    random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
     default_storage.save(random_filename, ContentFile(pdf_bytes))
     pdf_url = default_storage.url(random_filename)
 
-    # PDFResult modeliga PDF URL ni saqlaymiz
     pdf_result = PDFResult.objects.create(
         user_id=data['id'],
         phone=data['phone'],
