@@ -47,9 +47,9 @@ def generate_pdf(data):
             raw_status = test.get("status", "")
             status = str(raw_status).lower()
             if status == "true":
-                symbol_html = '<span style="color: green;">&#x2705;</span>'
+                symbol_html = '<span style="color: green;">✅ True</span>'
             else:
-                symbol_html = '<span style="color: red;">&#x274C;</span>'
+                symbol_html = '<span style="color: red;">❌ False</span>'
             html += f"<div class='result'>{test.get('number')}. {test.get('option')} {symbol_html}</div>"
         return html
 
