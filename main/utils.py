@@ -115,20 +115,20 @@ def generate_pdf(data):
 
     # Test natijalarini shakllantirish uchun funksiya
     def build_results_paragraphs(results):
-    paras = []
-    for test in results:
-        number = test.get('number')
-        option = test.get('option')
-        status = str(test.get("status", "")).lower()
-        if status == "true":
-            emoji_html = f'<img src="{green_check_path}" width="12" height="12"/>'
-        else:
-            emoji_html = f'<img src="{red_cross_path}" width="12" height="12"/>'
-        # Matnda emoji o'rniga <img> tegi qo'shamiz
-        text = f"<b>{number}.</b> {option} {emoji_html}"
-        para = Paragraph(text, normal_style)
-        paras.append(para)
-    return paras
+        paras = []  # Bu yerda 4 ta bo'shliq yoki 1 tab bilan indentatsiya kerak
+        for test in results:
+            number = test.get('number')
+            option = test.get('option')
+            status = str(test.get("status", "")).lower()
+            if status == "true":
+                emoji_html = f'<img src="{green_check_path}" width="12" height="12"/>'
+            else:
+                emoji_html = f'<img src="{red_cross_path}" width="12" height="12"/>'
+            text = f"<b>{number}.</b> {option} {emoji_html}"
+            para = Paragraph(text, normal_style)
+            paras.append(para)
+        return paras
+
 
     # Har bir fan bo‘yicha ustunlarni tayyorlaymiz
     columns_data = []
