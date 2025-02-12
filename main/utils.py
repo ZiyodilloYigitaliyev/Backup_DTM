@@ -103,11 +103,9 @@ def generate_pdf(data):
         }}
         .emoji {{
             font-family: 'Twemoji', sans-serif;
-            font-size: 24px;
         }}
         body {{
-            /* Emoji uchun birinchi o'rinda Noto Color Emoji, keyin esa boshqa fontlar */
-            font-family: 'Noto Color Emoji', Arial, sans-serif;
+            font-family: 'Twemoji', Arial, sans-serif;
             margin: 0;
             padding: 0;
         }}
@@ -115,6 +113,8 @@ def generate_pdf(data):
             font-family: Arial, sans-serif;
             color: #000;
             letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
+            font-size: 14px;
+            font-weight: bold;
             margin: 0;
             padding: 0;
             
