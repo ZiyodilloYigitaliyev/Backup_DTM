@@ -89,6 +89,7 @@ def generate_pdf(data):
     total_style = ParagraphStyle('Total', parent=normal_style, fontSize=11, alignment=1, fontName=font_name)
     footer_style = ParagraphStyle('Footer', parent=styles['Heading3'], alignment=1, fontName=font_name)
 
+    
     # Rasmni URL orqali yuklab olish
     try:
         response = requests.get(image_src)
@@ -96,6 +97,25 @@ def generate_pdf(data):
         image_data = BytesIO(response.content)
     except Exception as e:
         image_data = None
+
+    if image_data:
+        # Fayl ko'rsatkichini boshiga qaytarish
+        image_data.seek(0)
+        try:
+            pil_img = PILImage.open(image_data)
+            actual_width, actual_height = pil_img.size  # haqiqiy o'lchamlarni olamiz
+            ratio = actual_height / actual_width if actual_width else 1
+        except Exception as e:
+            ratio = 1  # xatolik yuz bersa, default qiymat
+        # ReportLab Image obyektini yaratish
+        img = Image(image_data)
+        available_width = doc.width * 0.6  # rasm uchun ajratilgan kenglik
+        img.drawWidth = available_width
+        calculated_height = available_width * ratio
+        max_image_height = doc.height * 0.9  # maksimal balandlik (sahifaning 90%)
+        img.drawHeight = min(calculated_height, max_image_height)
+    else:
+        img = Spacer(1, 1)
 
     # PDF faylini xotiradagi buffer ga yozish uchun
     pdf_buffer = BytesIO()
@@ -147,25 +167,7 @@ def generate_pdf(data):
             ('INNERGRID', (0, 0), (-1, -1), 0, colors.white),
         ]))
 
-    # Rasmni PDF ga qo'shamiz
-    if image_data:
-        image_data.seek(0)  # Fayl boshiga qaytamiz
-        try:
-            pil_img = PILImage.open(image_data)
-            actual_width, actual_height = pil_img.size
-            ratio = actual_height / actual_width if actual_width else 1
-        except Exception as e:
-            ratio = 1  # Agar xatolik yuz bersa, default qiymat
-        
-        img = Image(image_data)
-        available_width = doc.width * 0.6  # Sahifaning 60% qismi
-        img.drawWidth = available_width
-        calculated_height = available_width * ratio
-        max_image_height = doc.height * 0.9  # Sahifaning 90% balandligi
-        img.drawHeight = min(calculated_height, max_image_height)
-    else:
-        img = Spacer(1, 1)
-
+    
     # Rasm va natijalar yonma-yon joylashishi uchun jadval
     main_table = Table([[img, results_table]],
                        colWidths=[doc.width * 0.6, doc.width * 0.4])
