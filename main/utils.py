@@ -2,9 +2,23 @@ import uuid
 import os
 from io import BytesIO
 import boto3
-from weasyprint import HTML
+import requests
 from dotenv import load_dotenv
 from .models import PDFResult
+
+# ReportLab kutubxonasidan importlar
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image,
+                                Table, TableStyle, KeepTogether, Flowable)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+# Agar LotusCoder shriftini ishlatmoqchi bo'lsangiz, quyidagicha ro'yxatga oling:
+# pdfmetrics.registerFont(TTFont('LotusCoder', '/path/to/Lotuscoder-0WWrG.ttf'))
+# Agar shriftni topa olmasangiz, default shrift sifatida Helvetica ishlatiladi.
+default_font = 'Helvetica'  # yoki 'LotusCoder' agar yuqoridagi ro'yxatga olish amalga oshirilgan bo'lsa
 
 load_dotenv()
 
@@ -13,9 +27,24 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
 AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 
+# Horizontal chiziq chizish uchun maxsus Flowable
+class HR(Flowable):
+    def __init__(self, width, thickness=1, color=colors.black):
+        Flowable.__init__(self)
+        self.width = width
+        self.thickness = thickness
+        self.color = color
+        self.height = thickness
+
+    def draw(self):
+        self.canv.setLineWidth(self.thickness)
+        self.canv.setStrokeColor(self.color)
+        self.canv.line(0, 0, self.width, 0)
+
 def generate_pdf(data):
     image_src = data['image']
 
+    # Natijalarni ajratamiz va umumiy ballarni hisoblaymiz
     majburiy_results = []
     fan1_results = []
     fan2_results = []
@@ -46,162 +75,133 @@ def generate_pdf(data):
     fan1_results = sorted(fan1_results, key=lambda x: int(x.get('number', 0)))
     fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
 
-    def build_results_html(results):
-        html = ""
+    # Shriftlar va uslublar
+    styles = getSampleStyleSheet()
+    # Kerakli shrift nomi: default_font = 'Helvetica' yoki 'LotusCoder'
+    font_name = default_font
+
+    header_style = ParagraphStyle('Header', parent=styles['Heading2'], alignment=1, fontName=font_name)
+    normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontName=font_name)
+    result_style = ParagraphStyle('Result', parent=normal_style, fontSize=10, fontName=font_name)
+    total_style = ParagraphStyle('Total', parent=normal_style, fontSize=11, alignment=1, fontName=font_name)
+    footer_style = ParagraphStyle('Footer', parent=styles['Heading3'], alignment=1, fontName=font_name)
+
+    # Rasmni URL dan yuklab olish
+    try:
+        response = requests.get(image_src)
+        response.raise_for_status()
+        image_data = BytesIO(response.content)
+    except Exception as e:
+        # Agar rasmni yuklashda xatolik yuz bersa, bo'sh obyektdan foydalanamiz
+        image_data = None
+
+    # PDFni xotirada saqlash uchun buffer
+    pdf_buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        pdf_buffer,
+        pagesize=A4,
+        rightMargin=28,
+        leftMargin=28,
+        topMargin=28,
+        bottomMargin=28
+    )
+
+    story = []
+
+    # Header qismi: ID va telefon, hamda gorizontal chiziq
+    story.append(Paragraph(f"ID: {data['id']}", header_style))
+    story.append(Paragraph(f"Telefon: {data['phone']}", header_style))
+    story.append(Spacer(1, 12))
+    story.append(HR(doc.width))
+    story.append(Spacer(1, 12))
+
+    # Natijalarni ustunlarga joylash uchun yordamchi funksiya
+    def build_results_flowables(results, total):
+        flowables = []
         for test in results:
-            raw_status = test.get("status", "")
-            status = str(raw_status).lower()
+            status = str(test.get("status", "")).lower()
             if status == "true":
-                symbol_html = '<span class="emoji" style="color: green;">&#x2705;</span>'
+                symbol = "✅"
             else:
-                symbol_html = '<span class="emoji" style="color: red;">&#x274C;</span>'
-            # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
-            html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
-        return html
+                symbol = "❌"
+            # Raqam, variant va belgi
+            text = f"<b>{test.get('number')}</b>. {test.get('option')} {symbol}"
+            flowables.append(Paragraph(text, result_style))
+            flowables.append(Spacer(1, 2))
+        flowables.append(Paragraph(f"Jami: {total:.1f}", total_style))
+        return flowables
 
-
-
-    columns_html = ""
+    # Har bir fan uchun natija ustunlarini tayyorlaymiz
+    result_columns = []
     if majburiy_results:
-        majburiy_html = build_results_html(majburiy_results)
-        columns_html += f"""
-         <div class="result-column">
-             {majburiy_html}
-             <div class="total">Jami: {majburiy_total:.1f}</div>
-         </div>
-        """
+        majburiy_flowables = build_results_flowables(majburiy_results, majburiy_total)
+        result_columns.append(KeepTogether(majburiy_flowables))
     if fan1_results:
-        fan1_html = build_results_html(fan1_results)
-        columns_html += f"""
-         <div class="result-column">
-             {fan1_html}
-             <div class="total">Jami: {fan1_total:.1f}</div>
-         </div>
-        """
+        fan1_flowables = build_results_flowables(fan1_results, fan1_total)
+        result_columns.append(KeepTogether(fan1_flowables))
     if fan2_results:
-        fan2_html = build_results_html(fan2_results)
-        columns_html += f"""
-         <div class="result-column">
-             {fan2_html}
-             <div class="total">Jami: {fan2_total:.1f}</div>
-         </div>
-        """
+        fan2_flowables = build_results_flowables(fan2_results, fan2_total)
+        result_columns.append(KeepTogether(fan2_flowables))
 
-    html_content = f"""
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        
-        @page {{
-            size: A4;
-            margin: 10mm;
-        }}
-        @font-face {{
-            font-family: 'LotusCoder';
-            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/Lotuscoder-0WWrG.ttf') format('truetype');
-        }}
-        .emoji {{
-            font-family: 'LotusCoder', sans-serif;
-        }}
-        body {{
-            font-family: 'LotusCoder', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }}
-        .number {{
-            font-family: Arial, sans-serif;
-            color: #000;
-            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
-            font-size: 14px;
-            margin: 0;
-            padding: 0;
-            
-        }}
-        .header {{
-            text-align: center;
-            margin-bottom: 10mm;
-        }}
-        .header h2, .header p {{
-            color: #000;
-            margin: 0;
-            padding: 0;
-        }}
-        .container {{
-            display: flex;
-            width: 100%;
-        }}
-        .image-column {{
-            width: 60%;
-            padding: 2mm;
-            box-sizing: border-box;
-        }}
-        .image-column img {{
-            width: 100%;
-            max-height: 600px;
-            object-fit: contain;
-        }}
-        .results-container {{
-            display: flex;
-            flex: 1;
-            padding: 2mm;
-            box-sizing: border-box;
-            gap: 2mm;
-        }}
-        .result-column {{
-            flex: 1;
-            font-size: 10px;
-            line-height: 1;
-            padding: 2mm;
-            box-sizing: border-box;
-            color: #000;
-            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
-        }}
-        .result {{
-            margin-bottom: 2mm;
-            word-break: break-all;
-        }}
-        .total {{
-            font-weight: bold;
-            font-size: 11px;
-            margin-top: 5mm;
-            text-align: center;
-            color: #000;
-            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
-        }}
-      </style>
-    </head>
-    <body>
-      <div class="header">
-          <h2>ID: {data['id']}</h2>
-          <p>Telefon: {data['phone']}</p>
-          <hr>
-      </div>
-      <div class="container">
-         <div class="image-column">
-             <img src="{image_src}" alt="Rasm">
-         </div>
-         <div class="results-container">
-             {columns_html}
-         </div>
-      </div>
-      <div class="header" style="margin-top: 10mm;">
-          <h3>Umumiy natija: {overall_total:.1f}</h3>
-      </div>
-    </body>
-    </html>
-    """
+    # Agar natija ustunlari mavjud bo'lsa, ularni jadval shaklida joylaymiz
+    results_table = None
+    if result_columns:
+        n_cols = len(result_columns)
+        # Natija qismi uchun mavjud kenglik: butun sahifaning 40%
+        available_width = doc.width
+        results_col_width = available_width * 0.4
+        col_width = results_col_width / n_cols
+        results_table = Table([result_columns], colWidths=[col_width] * n_cols)
+        results_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('BOX', (0, 0), (-1, -1), 0, colors.white),
+            ('INNERGRID', (0, 0), (-1, -1), 0, colors.white),
+        ]))
 
-    # PDF faylini yaratamiz
-    pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
+    # Rasm va natijalarni yonma-yon joylash uchun jadval yaratamiz
+    if image_data:
+        img = Image(image_data)
+        # Chap ustun: sahifaning 60%
+        available_width = doc.width
+        image_col_width = available_width * 0.6
+        img.drawWidth = image_col_width
+        try:
+            img.drawHeight = img.drawWidth * (img.imageHeight / img.imageWidth)
+        except Exception:
+            img.drawHeight = img.drawWidth
+    else:
+        img = Spacer(1, 1)  # Agar rasm bo'lmasa
 
-    # Yaratilgan fayl uchun noyob nom (pdf-results papkasiga saqlanadi)
+    if results_table is None:
+        results_table = Spacer(1, 1)
+
+    main_table = Table(
+        [[img, results_table]],
+        colWidths=[doc.width * 0.6, doc.width * 0.4]
+    )
+    main_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(main_table)
+    story.append(Spacer(1, 24))
+
+    # Footer: Umumiy natija
+    story.append(Paragraph(f"Umumiy natija: {overall_total:.1f}", footer_style))
+
+    # PDFni yaratamiz
+    doc.build(story)
+    pdf_bytes = pdf_buffer.getvalue()
+    pdf_buffer.close()
+
+    # Yaratilgan PDF uchun noyob nom (pdf-results papkasiga saqlanadi)
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
 
     # BytesIO obyektiga aylantiramiz
     pdf_file_obj = BytesIO(pdf_bytes)
 
-    # boto3 S3 clientini yaratamiz
+    # boto3 S3 clientini yaratamiz va PDFni yuklaymiz
     s3_client = boto3.client(
         's3',
         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -209,7 +209,6 @@ def generate_pdf(data):
         region_name=AWS_S3_REGION_NAME
     )
 
-    # PDF faylini S3 bucketga, "pdf-results/" papkasiga yuklaymiz
     s3_client.upload_fileobj(
         pdf_file_obj,
         AWS_STORAGE_BUCKET_NAME,
@@ -217,7 +216,7 @@ def generate_pdf(data):
         ExtraArgs={'ContentType': 'application/pdf'}
     )
 
-    # Yuklangan faylga URL olish (agar bucket ommaga ochiq bo'lsa)
+    # Yuklangan PDF faylga URL olish (agar bucket ommaga ochiq bo'lsa)
     pdf_url = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{random_filename}"
 
     # PDF URL ni ma'lumotlar bazasiga saqlaymiz
