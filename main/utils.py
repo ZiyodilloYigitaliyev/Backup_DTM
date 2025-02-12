@@ -92,13 +92,18 @@ def generate_pdf(data):
     <head>
       <meta charset="utf-8">
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');
+        
         @page {{
             size: A4;
             margin: 10mm;
         }}
+        @font-face {{
+            font-family: 'Twemoji';
+            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/Twemoji.ttf') format('truetype');
+        }}
         .emoji {{
-            font-family: 'Noto Color Emoji', sans-serif;
+            font-family: 'Twemoji', sans-serif;
+            font-size: 24px;
         }}
         body {{
             /* Emoji uchun birinchi o'rinda Noto Color Emoji, keyin esa boshqa fontlar */
