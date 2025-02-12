@@ -7,7 +7,7 @@ import boto3
 import requests
 from dotenv import load_dotenv
 from .models import PDFResult
-
+from PIL import Image as PILImage
 # ReportLab kutubxonasi importlari
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image,
@@ -149,16 +149,22 @@ def generate_pdf(data):
 
     # Rasmni PDF ga qo'shamiz
     if image_data:
-        img = Image(image_data)
-        available_width = doc.width * 0.6  # rasm uchun 60% kenglik
-        img.drawWidth = available_width
+        # Avval image_data obyektining boshiga qaytamiz:
+        image_data.seek(0)
         try:
-            ratio = img.imageHeight / img.imageWidth if img.imageWidth else 1
-            calculated_height = img.drawWidth * ratio
-            max_image_height = doc.height * 0.9  # maksimal balandlik sahifaning 90%
-            img.drawHeight = min(calculated_height, max_image_height)
-        except Exception:
-            img.drawHeight = img.drawWidth
+            pil_img = PILImage.open(image_data)
+            actual_width, actual_height = pil_img.size
+            # endi Ratio-ni o'zimiz hisoblaymiz:
+            ratio = actual_height / actual_width if actual_width else 1
+        except Exception as e:
+            ratio = 1
+
+        img = Image(image_data)
+        available_width = doc.width * 0.6
+        img.drawWidth = available_width
+        calculated_height = img.drawWidth * ratio
+        max_image_height = doc.height * 0.9
+        img.drawHeight = min(calculated_height, max_image_height)
     else:
         img = Spacer(1, 1)
 
