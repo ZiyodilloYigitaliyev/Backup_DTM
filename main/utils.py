@@ -119,6 +119,7 @@ def generate_pdf(data):
             margin-bottom: 10mm;
         }}
         .header h2, .header p {{
+            color: #000;
             margin: 0;
             padding: 0;
         }}
@@ -149,6 +150,8 @@ def generate_pdf(data):
             line-height: 1;
             padding: 2mm;
             box-sizing: border-box;
+            color: #000;
+            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
         }}
         .result {{
             margin-bottom: 2mm;
@@ -159,6 +162,8 @@ def generate_pdf(data):
             font-size: 11px;
             margin-top: 5mm;
             text-align: center;
+            color: #000;
+            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
         }}
       </style>
     </head>
