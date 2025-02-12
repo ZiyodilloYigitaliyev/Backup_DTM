@@ -121,7 +121,7 @@ def generate_pdf(data):
             option = test.get('option')
             status = str(test.get("status", "")).lower()
             if status == "true":
-                emoji_html = f'<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/green_check.png" width="12" height="12"/>'
+                emoji_html = f'<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/pngwing.com.png" width="12" height="12"/>'
             else:
                 emoji_html = f'<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/red_cross.png" width="12" height="12"/>'
             text = f"<b>{number}.</b> {option} {emoji_html}"
