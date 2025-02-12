@@ -26,6 +26,14 @@ AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans.ttf')
 pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
 
+
+try:
+    pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
+    base_font = 'DejaVuSans'
+except Exception as e:
+    # Agar font yuklanmasa, boshqa fontdan foydalanamiz
+    base_font = 'Helvetica'
+
 # Gorizontal chiziq (horizontal rule) uchun maxsus Flowable
 class HR(Flowable):
     def __init__(self, width, thickness=1, color=colors.black):
