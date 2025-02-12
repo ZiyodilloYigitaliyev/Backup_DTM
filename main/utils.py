@@ -96,10 +96,6 @@ def generate_pdf(data):
             margin: 10mm;
         }}
 
-        @font-face {{
-            font-family: 'Noto Color Emoji';
-            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/NotoColorEmoji.ttf') format('truetype');
-        }}
         body {{
             /* Emoji uchun birinchi o'rinda Noto Color Emoji, keyin esa boshqa fontlar */
             font-family: 'Noto Color Emoji', Arial, sans-serif;
