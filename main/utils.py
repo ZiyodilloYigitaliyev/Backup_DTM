@@ -47,18 +47,18 @@ def generate_pdf(data):
     fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
 
     def build_results_html(results):
-        html = ""
-        for test in results:
-            raw_status = test.get("status", "")
-            status = str(raw_status).lower()
-            if status == "true":
-                # ✅ belgisini yashil rangda ko'rsatamiz
-                symbol_html = '<span style="color: green;">✅ True</span>'
-            else:
-                # ❌ belgisini qizil rangda ko'rsatamiz
-                symbol_html = '<span style="color: red;">❌ False</span>'
-            html += f"<div class='result'>{test.get('number')}. {test.get('option')} {symbol_html}</div>"
-        return html
+    html = ""
+    for test in results:
+        raw_status = test.get("status", "")
+        status = str(raw_status).lower()
+        if status == "true":
+            symbol_html = '<img src="https://img.icons8.com/emoji/48/check-mark-emoji.png" width="15" height="15" />'
+        else:
+            symbol_html = '<span class="emoji" style="color: red;">&#10060;</span>'
+        # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
+        html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
+    return html
+
 
     columns_html = ""
     if majburiy_results:
@@ -101,11 +101,16 @@ def generate_pdf(data):
             src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/NotoColorEmoji.ttf') format('truetype');
         }}
         body {{
-            /* Avval emoji fonti, so'ng Arial va sans-serif */
+            /* Emoji uchun birinchi o'rinda Noto Color Emoji, keyin esa boshqa fontlar */
             font-family: 'Noto Color Emoji', Arial, sans-serif;
             margin: 0;
             padding: 0;
         }}
+
+        /* Raqamlar uchun maxsus stil */
+        .number {
+            font-family: Arial, sans-serif; /* yoki boshqa raqamlar uchun to'g'ri font */
+        }
         .header {{
             text-align: center;
             margin-bottom: 10mm;
