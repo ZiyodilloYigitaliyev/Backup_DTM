@@ -48,15 +48,15 @@ def generate_pdf(data):
 
     def build_results_html(results):
     html = ""
-    for test in results:
-        raw_status = test.get("status", "")
-        status = str(raw_status).lower()
-        if status == "true":
-            symbol_html = '<span class="emoji" style="color: green;">✅</span>'
-        else:
-            symbol_html = '<span class="emoji" style="color: red;">❌</span>'
+        for test in results:
+            raw_status = test.get("status", "")
+            status = str(raw_status).lower()
+                if status == "true":
+                symbol_html = '<span class="emoji" style="color: green;">✅</span>'
+            else:
+                symbol_html = '<span class="emoji" style="color: red;">❌</span>'
         # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
-        html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
+            html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
     return html
 
 
