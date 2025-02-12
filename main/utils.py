@@ -47,17 +47,18 @@ def generate_pdf(data):
     fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
 
     def build_results_html(results):
-    html = ""
+        html = ""
         for test in results:
             raw_status = test.get("status", "")
             status = str(raw_status).lower()
-                if status == "true":
+            if status == "true":
                 symbol_html = '<span class="emoji" style="color: green;">✅</span>'
             else:
                 symbol_html = '<span class="emoji" style="color: red;">❌</span>'
-        # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
+            # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
             html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
-    return html
+        return html
+
 
 
     columns_html = ""
@@ -106,10 +107,6 @@ def generate_pdf(data):
             padding: 0;
         }}
 
-        /* Raqamlar uchun maxsus stil */
-        .number {
-            font-family: Arial, sans-serif; /* yoki boshqa raqamlar uchun to'g'ri font */
-        }
         .header {{
             text-align: center;
             margin-bottom: 10mm;
