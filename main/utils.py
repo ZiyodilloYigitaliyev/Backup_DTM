@@ -41,6 +41,11 @@ def generate_pdf(data):
 
     overall_total = majburiy_total + fan1_total + fan2_total
 
+    # Ro'yxatlarni number bo'yicha tartiblash
+    majburiy_results = sorted(majburiy_results, key=lambda x: int(x.get('number', 0)))
+    fan1_results = sorted(fan1_results, key=lambda x: int(x.get('number', 0)))
+    fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
+
     def build_results_html(results):
         html = ""
         for test in results:
@@ -198,3 +203,4 @@ def generate_pdf(data):
     )
 
     return pdf_url
+
