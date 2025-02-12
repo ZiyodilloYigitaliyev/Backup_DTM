@@ -159,18 +159,28 @@ def generate_pdf(data):
         ]))
 
     # Rasm va natijalarni yonma-yon joylash uchun jadval yaratamiz
+    try:
+        response = requests.get(image_src)
+        response.raise_for_status()
+        image_data = BytesIO(response.content)
+    except Exception as e:
+        image_data = None
+
     if image_data:
         img = Image(image_data)
-        # Chap ustun: sahifaning 60%
-        available_width = doc.width
-        image_col_width = available_width * 0.6
-        img.drawWidth = image_col_width
+        available_width = doc.width * 0.6  # rasm ustuni kengligi
+        img.drawWidth = available_width
         try:
-            img.drawHeight = img.drawWidth * (img.imageHeight / img.imageWidth)
+            # Rasmning asl nisbatini hisobga olamiz
+            ratio = img.imageHeight / img.imageWidth if img.imageWidth else 1
+            calculated_height = img.drawWidth * ratio
+            # Maksimal rasm balandligini sahifaning balandligining 90% qilib belgilaymiz
+            max_image_height = doc.height * 0.9
+            img.drawHeight = min(calculated_height, max_image_height)
         except Exception:
             img.drawHeight = img.drawWidth
     else:
-        img = Spacer(1, 1)  # Agar rasm bo'lmasa
+        img = Spacer(1, 1)
 
     if results_table is None:
         results_table = Spacer(1, 1)
