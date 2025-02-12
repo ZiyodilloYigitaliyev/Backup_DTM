@@ -23,16 +23,9 @@ AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 
 # Emoji va Unicode belgilarini qo'llab-quvvatlaydigan fontni ro'yxatdan o'tkazamiz
 # Font faylini static papkadan yuklaymiz
-font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans.ttf')
-pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
-
-
-try:
-    pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
-    base_font = 'DejaVuSans'
-except Exception as e:
-    # Agar font yuklanmasa, boshqa fontdan foydalanamiz
-    base_font = 'Helvetica'
+font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'Symbola.ttf')
+pdfmetrics.registerFont(TTFont('Symbola', font_path))
+base_font = 'Symbola'
 
 # Gorizontal chiziq (horizontal rule) uchun maxsus Flowable
 class HR(Flowable):
