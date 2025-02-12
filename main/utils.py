@@ -52,7 +52,7 @@ def generate_pdf(data):
         raw_status = test.get("status", "")
         status = str(raw_status).lower()
         if status == "true":
-            symbol_html = '<img src="https://img.icons8.com/emoji/48/check-mark-emoji.png" width="15" height="15" />'
+            symbol_html = '<span class="emoji" style="color: green;">&#10060;</span>'
         else:
             symbol_html = '<span class="emoji" style="color: red;">&#10060;</span>'
         # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
