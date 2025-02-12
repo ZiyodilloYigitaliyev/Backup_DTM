@@ -106,7 +106,14 @@ def generate_pdf(data):
             margin: 0;
             padding: 0;
         }}
-
+        .number {{
+            font-family: Arial, sans-serif;
+            color: #000;
+            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
+            margin: 0;
+            padding: 0;
+            
+        }}
         .header {{
             text-align: center;
             margin-bottom: 10mm;
