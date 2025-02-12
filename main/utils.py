@@ -52,9 +52,9 @@ def generate_pdf(data):
             raw_status = test.get("status", "")
             status = str(raw_status).lower()
             if status == "true":
-                symbol_html = '<span class="emoji" style="color: green;">✅</span>'
+                symbol_html = '<span class="emoji" style="color: green;">&#x2705;</span>'
             else:
-                symbol_html = '<span class="emoji" style="color: red;">❌</span>'
+                symbol_html = '<span class="emoji" style="color: red;">&#x274C;</span>'
             # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
             html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
         return html
@@ -98,14 +98,14 @@ def generate_pdf(data):
             margin: 10mm;
         }}
         @font-face {{
-            font-family: 'Twemoji';
-            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/twemoji.ttf') format('truetype');
+            font-family: 'LotusCoder';
+            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/LotusCoder-0WWrG.ttf') format('truetype');
         }}
         .emoji {{
-            font-family: 'Twemoji', sans-serif;
+            font-family: 'LotusCoder', sans-serif;
         }}
         body {{
-            font-family: 'Twemoji', Arial, sans-serif;
+            font-family: 'LotusCoder', Arial, sans-serif;
             margin: 0;
             padding: 0;
         }}
@@ -114,7 +114,6 @@ def generate_pdf(data):
             color: #000;
             letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
             font-size: 14px;
-            font-weight: bold;
             margin: 0;
             padding: 0;
             
