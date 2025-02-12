@@ -149,27 +149,22 @@ def generate_pdf(data):
 
     # Rasmni PDF ga qo'shamiz
     if image_data:
-        # Avval image_data obyektining boshiga qaytamiz:
-        image_data.seek(0)
+        image_data.seek(0)  # Fayl boshiga qaytamiz
         try:
             pil_img = PILImage.open(image_data)
             actual_width, actual_height = pil_img.size
-            # endi Ratio-ni o'zimiz hisoblaymiz:
             ratio = actual_height / actual_width if actual_width else 1
         except Exception as e:
-            ratio = 1
-
+            ratio = 1  # Agar xatolik yuz bersa, default qiymat
+        
         img = Image(image_data)
-        available_width = doc.width * 0.6
+        available_width = doc.width * 0.6  # Sahifaning 60% qismi
         img.drawWidth = available_width
-        calculated_height = img.drawWidth * ratio
-        max_image_height = doc.height * 0.9
+        calculated_height = available_width * ratio
+        max_image_height = doc.height * 0.9  # Sahifaning 90% balandligi
         img.drawHeight = min(calculated_height, max_image_height)
     else:
         img = Spacer(1, 1)
-
-    if results_table is None:
-        results_table = Spacer(1, 1)
 
     # Rasm va natijalar yonma-yon joylashishi uchun jadval
     main_table = Table([[img, results_table]],
