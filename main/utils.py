@@ -98,7 +98,7 @@ def generate_pdf(data):
 
         @font-face {{
             font-family: 'Noto Color Emoji';
-            src: url('/static/fonts/NotoColorEmoji.ttf') format('truetype');
+            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/NotoColorEmoji.ttf') format('truetype');
         }}
         body {{
             /* Avval emoji fonti, so'ng Arial va sans-serif */
