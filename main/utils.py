@@ -52,9 +52,9 @@ def generate_pdf(data):
         raw_status = test.get("status", "")
         status = str(raw_status).lower()
         if status == "true":
-            symbol_html = '<span class="emoji" style="color: green;">&#10060;</span>'
+            symbol_html = '<span class="emoji" style="color: green;">✅</span>'
         else:
-            symbol_html = '<span class="emoji" style="color: red;">&#10060;</span>'
+            symbol_html = '<span class="emoji" style="color: red;">❌</span>'
         # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
         html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
     return html
@@ -91,11 +91,14 @@ def generate_pdf(data):
     <head>
       <meta charset="utf-8">
       <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');
         @page {{
             size: A4;
             margin: 10mm;
         }}
-
+        .emoji {{
+            font-family: 'Noto Color Emoji', sans-serif;
+        }}
         body {{
             /* Emoji uchun birinchi o'rinda Noto Color Emoji, keyin esa boshqa fontlar */
             font-family: 'Noto Color Emoji', Arial, sans-serif;
