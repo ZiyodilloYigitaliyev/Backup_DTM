@@ -26,8 +26,8 @@ AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'Symbola.ttf')
 pdfmetrics.registerFont(TTFont('Symbola', font_path))
 base_font = 'Symbola'
-green_check_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'green_check.png')
-red_cross_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'red_cross.png')
+# green_check_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'green_check.png')
+# red_cross_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'red_cross.png')
 # Gorizontal chiziq (horizontal rule) uchun maxsus Flowable
 class HR(Flowable):
     def __init__(self, width, thickness=1, color=colors.black):
@@ -121,9 +121,9 @@ def generate_pdf(data):
             option = test.get('option')
             status = str(test.get("status", "")).lower()
             if status == "true":
-                emoji_html = f'<img src="{green_check_path}" width="12" height="12"/>'
+                emoji_html = f'<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/green_check.png" width="12" height="12"/>'
             else:
-                emoji_html = f'<img src="{red_cross_path}" width="12" height="12"/>'
+                emoji_html = f'<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/red_cross.png" width="12" height="12"/>'
             text = f"<b>{number}.</b> {option} {emoji_html}"
             para = Paragraph(text, normal_style)
             paras.append(para)
