@@ -99,7 +99,7 @@ def generate_pdf(data):
         }}
         @font-face {{
             font-family: 'Twemoji';
-            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/Twemoji.ttf') format('truetype');
+            src: url('https://backup-questions-e95023d8185c.herokuapp.com/static/fonts/twemoji.ttf') format('truetype');
         }}
         .emoji {{
             font-family: 'Twemoji', sans-serif;
