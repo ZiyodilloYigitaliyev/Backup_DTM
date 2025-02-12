@@ -52,8 +52,10 @@ def generate_pdf(data):
             raw_status = test.get("status", "")
             status = str(raw_status).lower()
             if status == "true":
+                # ✅ belgisini yashil rangda ko'rsatamiz
                 symbol_html = '<span style="color: green;">✅ True</span>'
             else:
+                # ❌ belgisini qizil rangda ko'rsatamiz
                 symbol_html = '<span style="color: red;">❌ False</span>'
             html += f"<div class='result'>{test.get('number')}. {test.get('option')} {symbol_html}</div>"
         return html
@@ -93,8 +95,14 @@ def generate_pdf(data):
             size: A4;
             margin: 10mm;
         }}
+
+        @font-face {{
+            font-family: 'Noto Color Emoji';
+            src: url('/static/fonts/NotoColorEmoji.ttf') format('truetype');
+        }}
         body {{
-            font-family: Arial, sans-serif;
+            /* Avval emoji fonti, so'ng Arial va sans-serif */
+            font-family: 'Noto Color Emoji', Arial, sans-serif;
             margin: 0;
             padding: 0;
         }}
@@ -203,4 +211,3 @@ def generate_pdf(data):
     )
 
     return pdf_url
-
