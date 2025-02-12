@@ -5,7 +5,7 @@ import boto3
 import requests
 from dotenv import load_dotenv
 from .models import PDFResult
-
+from django.conf import settings
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, Flowable
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -22,11 +22,9 @@ AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
 AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 
 # Emoji va Unicode belgilarini qo'llab-quvvatlaydigan fontni ro'yxatdan o'tkazamiz
-try:
-    pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
-    base_font = 'DejaVuSans'
-except Exception as e:
-    base_font = 'Helvetica'
+# Font faylini static papkadan yuklaymiz
+font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans.ttf')
+pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
 
 # Gorizontal chiziq (horizontal rule) uchun maxsus Flowable
 class HR(Flowable):
