@@ -92,92 +92,87 @@ def generate_pdf(data):
     <head>
       <meta charset="utf-8">
       <style>
-         @page {{
-             size: A4;
-             margin: 10mm;
-         }}
-         html, body {{
-             width: 100%;
-             height: 100%;
-             margin: 0;
-             padding: 0;
-         }}
-         body {{
-             /* Grid: header, kontent va footer */
-             display: grid;
-             grid-template-rows: 20mm auto 15mm;
-         }}
-         .header {{
-             text-align: center;
-             font-size: 10pt;
-             padding: 2mm;
-         }}
-         .footer {{
-             text-align: center;
-             font-size: 10pt;
-             padding: 2mm;
-         }}
-         .container {{
-             display: flex;
-             align-items: stretch; /* Chap va o'ng ustunlar bir xil balandlikda bo'lishi uchun */
-             height: 100%;
-         }}
-         .image-column {{
-             width: 40%;
-             padding: 2mm;
-             box-sizing: border-box;
-             height: 100%;
-         }}
-         .image-column img {{
-             width: 100%;
-             height: 100%;
-             object-fit: contain;
-             display: block;
-         }}
-         .results-container {{
-             width: 60%;
-             padding: 2mm;
-             box-sizing: border-box;
-             overflow: hidden;
-         }}
-         .category-column {{
-             margin-bottom: 1mm;
-             page-break-inside: avoid;
-         }}
-         .category-column h4 {{
-             margin: 0;
-             font-size: 9pt;
-             text-align: left;
-             color: #333;
-         }}
-         .result {{
-             display: flex;
-             align-items: center;
-             gap: 2mm;
-             font-size: 7pt;
-             margin: 0.5mm 0;
-             page-break-inside: avoid;
-         }}
-         .number {{
-             font-weight: bold;
-         }}
-         .option {{
-             flex: 1;
-         }}
-         .result-img-container {{
-             width: 4%;
-         }}
-         .result-img {{
-             width: 8px;
-             height: 8px;
-             display: inline-block;
-         }}
-         .total {{
-             font-weight: bold;
-             font-size: 8pt;
-             text-align: right;
-         }}
-      </style>
+        @page {{
+            size: A4;
+            margin: 10mm;
+        }}
+        html, body {{
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif; /* O'zgartiring */
+            color: #333; /* Matn rangi */
+        }}
+        .header {{
+            text-align: center;
+            font-size: 12pt; /* Kattaroq sarlavha */
+            padding: 5mm;
+            background-color: #f0f0f0; /* Sarlavha fon rangi */
+            border-bottom: 2px solid #ccc; /* Pastki chiziq */
+        }}
+        .footer {{
+            text-align: center;
+            font-size: 10pt;
+            padding: 5mm;
+            border-top: 1px solid #ccc; /* Yuqori chiziq */
+        }}
+        .container {{
+            display: flex;
+            align-items: stretch;
+            height: calc(100% - 50mm); /* Header va footer balandligini hisobga olish */
+        }}
+        .image-column {{
+            width: 40%;
+            padding: 5mm;
+            box-sizing: border-box;
+            height: 100%;
+            background-color: #fafafa; /* Rasm ustuni fon rangi */
+            border-right: 1px solid #ccc; /* O'ng chiziq */
+        }}
+        .results-container {{
+            width: 60%;
+            padding: 5mm;
+            box-sizing: border-box;
+            overflow: hidden;
+        }}
+        .category-column {{
+            margin-bottom: 10mm; /* Kategoriyalar orasidagi bo'sh joy */
+            page-break-inside: avoid;
+        }}
+        .category-column h4 {{
+            margin: 0;
+            font-size: 11pt; /* Kattaroq sarlavha */
+            text-align: left;
+            color: #0056b3; /* Sarlavha rangi */
+            border-bottom: 1px solid #ccc; /* Pastki chiziq */
+            padding-bottom: 2mm; /* Pastki bo'sh joy */
+        }}
+        .result {{
+            display: flex;
+            align-items: center;
+            gap: 5mm; /* Elementlar orasidagi bo'sh joy */
+            font-size: 9pt; /* Kattaroq matn */
+            margin: 2mm 0; /* Elementlar orasidagi bo'sh joy */
+            page-break-inside: avoid;
+        }}
+        .number {{
+            font-weight: bold;
+        }}
+        .option {{
+            flex: 1;
+        }}
+        .result-img {{
+            width: 8px; /* Katta ikonka */
+            height: 8px; /* Katta ikonka */
+            display: inline-block;
+        }}
+        .total {{
+            font-weight: bold;
+            font-size: 10pt; /* Kattaroq jami */
+            text-align: right;
+        }}
+    </style>
     </head>
     <body>
        <div class="header">
