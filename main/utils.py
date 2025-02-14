@@ -97,10 +97,20 @@ def generate_pdf(data):
           background: #f9f9f9;
         }}
         .header {{
+          position: relative;
           text-align: center;
           padding: 8px;
           background: #e0e0e0;
           border-bottom: 1px solid #ccc;
+        }}
+
+        .header img.logo {{
+          position: absolute;
+          left: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          height: 50px;
+          filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.3));
         }}
         .footer {{
           text-align: center;
@@ -116,7 +126,7 @@ def generate_pdf(data):
           justify-content: space-between;
           box-sizing: border-box;
           margin-top: 10px;
-          margin-bottom: 50px;
+          margin-bottom: 20px;
           gap: 10px;
         }}
         .left {{
@@ -156,10 +166,13 @@ def generate_pdf(data):
       </style>
     </head>
     <body>
-      <div class="header">
-         <h2>ID: {data['id']}</h2>
-         <p>Telefon: {data['phone']}</p>
-      </div>
+      <div class="header" ">
+          <img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/logo-titul.png" alt="Logo">
+          <div>
+            <h2>ID: {data['id']}</h2>
+            <p>Telefon: {data['phone']}</p>
+          </div>
+        </div>
       <div class="content">
          <div class="left">
            <img src="{image_src}" alt="Rasm">
