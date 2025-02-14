@@ -23,7 +23,7 @@ def generate_pdf(data):
     fan1_total = 0.0
     fan2_total = 0.0
 
-    # Natijalarni kategoriyalarga ajratish va hisoblash
+    # Natijalarni kategoriya bo‘yicha ajratish va jami hisoblash
     for test in data["results"]:
         category = test.get("category", "")
         status = str(test.get("status", "")).lower()
@@ -81,162 +81,151 @@ def generate_pdf(data):
         category_html += f'<div class="total">Jami: {total:.1f}</div></div>'
         return category_html
 
-    # Har bir kategoriya uchun HTML qismini yig'amiz
     columns_html = ""
     columns_html += build_category_html("Majburiy fan", majburiy_results, majburiy_total)
     columns_html += build_category_html("Fan 1", fan1_results, fan1_total)
     columns_html += build_category_html("Fan 2", fan2_results, fan2_total)
 
-    # Barcha maʼlumotlarni bitta sahifada joylash uchun body ni flex containerga aylantiramiz
+    # Sahifani grid bilan tashkil qilamiz: header, asosiy kontent va footer (barcha bitta sahifada)
+    # A4 sahifa bo'lgani uchun, biz header va footer uchun mm o'lcham belgilab, qolgan qismni asosiy konteynerga ajratamiz.
     html_content = f"""
     <html>
     <head>
       <meta charset="utf-8">
       <style>
-        @page {{
-            size: A4;
-            margin: 10mm;
-        }}
-        html, body {{
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }}
-        /* Bosh sahifa: header, asosiy kontent va footer ustun shaklida */
-        body {{
-            display: flex;
-            flex-direction: column;
-        }}
-        .header {{
-            text-align: center;
-            margin-bottom: 5mm;
-            flex: 0 0 auto;
-        }}
-        .header h2, .header p {{
-            color: #000;
-            margin: 0;
-            padding: 0;
-        }}
-        .container {{
-            flex: 1 1 auto;
-            display: flex;
-            align-items: stretch;  /* Chap va o'ng ustunlar teng bo'lishi uchun */
-        }}
-        /* Chap ustun: rasm */
-        .image-column {{
-            width: 40%;
-            padding: 2mm;
-            box-sizing: border-box;
-        }}
-        .image-column img {{
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
-        }}
-        /* O'ng ustun: natijalar */
-        .results-container {{
-            width: 60%;
-            padding: 2mm;
-            box-sizing: border-box;
-            overflow-y: auto;
-        }}
-        .category-column {{
-            margin-bottom: 3mm;
-            page-break-inside: avoid;
-        }}
-        .category-column h4 {{
-            margin-bottom: 2mm;
-            text-align: left;
-            color: #333;
-            font-size: 12px;
-        }}
-        .result {{
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-bottom: 1mm;
-            font-size: 8px;
-            page-break-inside: avoid;
-        }}
-        .number {{
-            font-weight: bold;
-        }}
-        .option {{
-            flex: 1;
-        }}
-        /* Natijalar satrlaridagi kichik rasm (status) uchun konteyner */
-        .result-img-container {{
-            width: 10%;
-        }}
-        .result-img {{
-            width: 100%;
-            height: auto;
-            display: block;
-        }}
-        .total {{
-            font-weight: bold;
-            font-size: 9px;
-            text-align: right;
-            color: #000;
-            margin-top: 2mm;
-        }}
-        .footer {{
-            text-align: center;
-            margin-top: 2mm;
-            font-size: 10px;
-            color: #000;
-            flex: 0 0 auto;
-        }}
+         @page {{
+             size: A4;
+             margin: 10mm;
+         }}
+         html, body {{
+             width: 100%;
+             height: 100%;
+             margin: 0;
+             padding: 0;
+         }}
+         body {{
+             /* Grid yordamida sahifani bo‘laklarga ajatamiz:
+                header: 20mm, kontent: avtomatik, footer: 15mm */
+             display: grid;
+             grid-template-rows: 20mm auto 15mm;
+         }}
+         .header {{
+             text-align: center;
+             font-size: 10pt;
+             padding: 2mm;
+         }}
+         .footer {{
+             text-align: center;
+             font-size: 10pt;
+             padding: 2mm;
+         }}
+         .container {{
+             display: flex;
+             /* Kontent qismi to‘liq balandlikni egallaydi */
+             height: 100%;
+         }}
+         .image-column {{
+             width: 40%;
+             padding: 2mm;
+             box-sizing: border-box;
+         }}
+         .image-column img {{
+             width: 100%;
+             height: 100%;
+             object-fit: contain;
+             display: block;
+         }}
+         .results-container {{
+             width: 60%;
+             padding: 2mm;
+             box-sizing: border-box;
+             overflow: hidden; /* Sahifa ichida qolishi uchun */
+         }}
+         .category-column {{
+             margin-bottom: 1mm;
+             page-break-inside: avoid;
+         }}
+         .category-column h4 {{
+             margin: 0;
+             font-size: 9pt;
+             text-align: left;
+             color: #333;
+         }}
+         .result {{
+             display: flex;
+             align-items: center;
+             gap: 2mm;
+             font-size: 7pt;
+             margin: 0.5mm 0;
+             page-break-inside: avoid;
+         }}
+         .number {{
+             font-weight: bold;
+         }}
+         .option {{
+             flex: 1;
+         }}
+         .result-img-container {{
+             width: 10%;
+         }}
+         .result-img {{
+             width: 100%;
+             height: auto;
+             display: block;
+         }}
+         .total {{
+             font-weight: bold;
+             font-size: 8pt;
+             text-align: right;
+         }}
       </style>
     </head>
     <body>
-      <div class="header">
-          <h2>ID: {data['id']}</h2>
-          <p>Telefon: {data['phone']}</p>
-          <hr>
-      </div>
-      <div class="container">
-         <div class="image-column">
-             <img src="{image_src}" alt="Rasm">
-         </div>
-         <div class="results-container">
-             {columns_html}
-         </div>
-      </div>
-      <div class="footer">
-          <h3>Umumiy natija: {overall_total:.1f}</h3>
-      </div>
+       <div class="header">
+           <h2>ID: {data['id']}</h2>
+           <p>Telefon: {data['phone']}</p>
+           <hr>
+       </div>
+       <div class="container">
+           <div class="image-column">
+              <img src="{image_src}" alt="Rasm">
+           </div>
+           <div class="results-container">
+              {columns_html}
+           </div>
+       </div>
+       <div class="footer">
+           <h3>Umumiy natija: {overall_total:.1f}</h3>
+       </div>
     </body>
     </html>
     """
 
-    # PDF yaratish
+    # PDF faylini yaratamiz
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
     pdf_file_obj = BytesIO(pdf_bytes)
 
     s3_client = boto3.client(
-        's3',
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        region_name=AWS_S3_REGION_NAME
+         's3',
+         aws_access_key_id=AWS_ACCESS_KEY_ID,
+         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+         region_name=AWS_S3_REGION_NAME
     )
 
     s3_client.upload_fileobj(
-        pdf_file_obj,
-        AWS_STORAGE_BUCKET_NAME,
-        random_filename,
-        ExtraArgs={'ContentType': 'application/pdf'}
+         pdf_file_obj,
+         AWS_STORAGE_BUCKET_NAME,
+         random_filename,
+         ExtraArgs={'ContentType': 'application/pdf'}
     )
 
     pdf_url = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{random_filename}"
 
     PDFResult.objects.create(
-        user_id=data['id'],
-        phone=data['phone'],
-        pdf_url=pdf_url
+         user_id=data['id'],
+         phone=data['phone'],
+         pdf_url=pdf_url
     )
 
     return pdf_url
