@@ -23,7 +23,7 @@ def generate_pdf(data):
     fan1_total = 0.0
     fan2_total = 0.0
 
-    # Natijalarni kategoriyalar bo‘yicha ajratamiz va jami natijalarni hisoblaymiz
+    # Natijalarni kategoriyalarga ajratish va hisoblash
     for test in data["results"]:
         category = test.get("category", "")
         status = str(test.get("status", "")).lower()
@@ -42,7 +42,7 @@ def generate_pdf(data):
 
     overall_total = majburiy_total + fan1_total + fan2_total
 
-    # Ro'yxatlarni number bo'yicha tartiblash
+    # Ro'yxatlarni tartiblash
     majburiy_results = sorted(majburiy_results, key=lambda x: int(x.get('number', 0)))
     fan1_results = sorted(fan1_results, key=lambda x: int(x.get('number', 0)))
     fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
@@ -73,30 +73,21 @@ def generate_pdf(data):
             """
         return html
 
-    # Har bir kategoriya uchun natijalar HTML qismini yig'amiz
-    majburiy_html = build_results_html(majburiy_results)
-    fan1_html = build_results_html(fan1_results)
-    fan2_html = build_results_html(fan2_results)
+    def build_category_html(title, results, total):
+        if not results:
+            return ""
+        category_html = f'<div class="category-column"><h4>{title}</h4>'
+        category_html += build_results_html(results)
+        category_html += f'<div class="total">Jami: {total:.1f}</div></div>'
+        return category_html
 
-    # Barcha ma'lumotlarni bitta sahifada, chap tomonda rasm va o'ng tomonda natijalar shaklida joylaymiz
-    columns_html = f"""
-         <div class="category-column">
-             <h4>Majburiy fan</h4>
-             {majburiy_html}
-             <div class="total">Jami: {majburiy_total:.1f}</div>
-         </div>
-         <div class="category-column">
-             <h4>Fan 1</h4>
-             {fan1_html}
-             <div class="total">Jami: {fan1_total:.1f}</div>
-         </div>
-         <div class="category-column">
-             <h4>Fan 2</h4>
-             {fan2_html}
-             <div class="total">Jami: {fan2_total:.1f}</div>
-         </div>
-    """
+    # Har bir kategoriya uchun HTML qismini yig'amiz
+    columns_html = ""
+    columns_html += build_category_html("Majburiy fan", majburiy_results, majburiy_total)
+    columns_html += build_category_html("Fan 1", fan1_results, fan1_total)
+    columns_html += build_category_html("Fan 2", fan2_results, fan2_total)
 
+    # Barcha maʼlumotlarni bitta sahifada joylash uchun body ni flex containerga aylantiramiz
     html_content = f"""
     <html>
     <head>
@@ -112,13 +103,15 @@ def generate_pdf(data):
             margin: 0;
             padding: 0;
         }}
+        /* Bosh sahifa: header, asosiy kontent va footer ustun shaklida */
         body {{
-            font-family: Arial, sans-serif;
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }}
         .header {{
             text-align: center;
             margin-bottom: 5mm;
+            flex: 0 0 auto;
         }}
         .header h2, .header p {{
             color: #000;
@@ -126,11 +119,11 @@ def generate_pdf(data):
             padding: 0;
         }}
         .container {{
+            flex: 1 1 auto;
             display: flex;
-            flex-direction: row;
-            width: 100%;
-            height: calc(100% - 30mm);
+            align-items: stretch;  /* Chap va o'ng ustunlar teng bo'lishi uchun */
         }}
+        /* Chap ustun: rasm */
         .image-column {{
             width: 40%;
             padding: 2mm;
@@ -138,9 +131,11 @@ def generate_pdf(data):
         }}
         .image-column img {{
             width: 100%;
-            height: auto;
+            height: 100%;
             object-fit: contain;
+            display: block;
         }}
+        /* O'ng ustun: natijalar */
         .results-container {{
             width: 60%;
             padding: 2mm;
@@ -171,9 +166,9 @@ def generate_pdf(data):
         .option {{
             flex: 1;
         }}
-        /* Natija rasm containerining kengligini o'zgartirish orqali rasm o'lchami ham moslashadi */
+        /* Natijalar satrlaridagi kichik rasm (status) uchun konteyner */
         .result-img-container {{
-            width: 10%; /* Agar ustun kengligi o'zgaradigan bo'lsa, bu qiymatni moslashtiring */
+            width: 10%;
         }}
         .result-img {{
             width: 100%;
@@ -192,10 +187,7 @@ def generate_pdf(data):
             margin-top: 2mm;
             font-size: 10px;
             color: #000;
-        }}
-        /* Barcha ma'lumotlar bitta sahifada bo'lishi uchun page-break o'chirilgan */
-        .category-column, .result {{
-            page-break-inside: avoid;
+            flex: 0 0 auto;
         }}
       </style>
     </head>
@@ -220,14 +212,11 @@ def generate_pdf(data):
     </html>
     """
 
-    # PDF faylini yaratamiz
+    # PDF yaratish
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
-
-    # Yaratilgan fayl uchun noyob nom (pdf-results papkasiga saqlanadi)
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
     pdf_file_obj = BytesIO(pdf_bytes)
 
-    # boto3 S3 clientini yaratamiz
     s3_client = boto3.client(
         's3',
         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -235,7 +224,6 @@ def generate_pdf(data):
         region_name=AWS_S3_REGION_NAME
     )
 
-    # PDF faylini S3 bucketga yuklaymiz
     s3_client.upload_fileobj(
         pdf_file_obj,
         AWS_STORAGE_BUCKET_NAME,
@@ -243,10 +231,8 @@ def generate_pdf(data):
         ExtraArgs={'ContentType': 'application/pdf'}
     )
 
-    # Yuklangan faylga URL olish (agar bucket ommaga ochiq bo'lsa)
     pdf_url = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{random_filename}"
 
-    # PDF URL ni ma'lumotlar bazasiga saqlaymiz
     PDFResult.objects.create(
         user_id=data['id'],
         phone=data['phone'],
