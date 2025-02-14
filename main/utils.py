@@ -16,10 +16,12 @@ AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 def generate_pdf(data):
     image_src = data['image']
 
-    # Kategoriya bo‘yicha natijalarni ajratamiz va hisoblaymiz
+    # Kategoriya bo‘yicha natijalarni ajratamiz
     majburiy_results = []
     fan1_results = []
     fan2_results = []
+
+    # (Agar kerak bo'lsa, umumiy natija uchun hisoblash saqlanib qoladi)
     majburiy_total = 0.0
     fan1_total = 0.0
     fan2_total = 0.0
@@ -52,24 +54,31 @@ def generate_pdf(data):
         for test in results:
             status = str(test.get("status", "")).lower()
             if status == "true":
-                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True" style="width:12px;height:12px;vertical-align:middle;vertical-align: text-top;">'
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True" style="width:12px;height:12px;vertical-align:text-top;">'
             else:
-                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False" style="width:12px;height:12px;vertical-align:middle;vertical-align: text-top;">'
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False" style="width:12px;height:12px;vertical-align:text-top;">'
             html += f'<div class="result" style="margin:3px 0; font-size:14px;"><strong>{test.get("number")}.</strong> {test.get("option")} {symbol}</div>'
         return html
 
-    def build_category_html(results, total):
+    def build_category_html(results):
         if not results:
             return ""
-        # Kategoriya nomlari olib tashlandi
+        # Endi kategoriya nomi ham chiqarilmaydi, faqat natijalar ko'rsatiladi
         html = '<div class="category-column" style="width:32%; box-sizing:border-box;">'
         html += build_results_html(results)
-        html += f'<div class="total" style="text-align:right; font-weight:bold; font-size:16px; margin-top:5px;">Jami: {total:.1f}</div>'
         html += '</div>'
         return html
 
-    # Kategoriya ustunlari orasidagi oraliq kamaytirildi
-    categories_html = '<div class="categories" style="display:flex; gap:5px; flex-wrap: wrap;">' '</div>'
+    cat_columns = []
+    if majburiy_results:
+        cat_columns.append(build_category_html(majburiy_results))
+    if fan1_results:
+        cat_columns.append(build_category_html(fan1_results))
+    if fan2_results:
+        cat_columns.append(build_category_html(fan2_results))
+
+    # Kategoriya ustunlari orasidagi oraliqni belgilash
+    categories_html = '<div class="categories" style="display:flex; gap:5px; flex-wrap: wrap;">' + "".join(cat_columns) + '</div>'
 
     html_content = f"""
     <html>
@@ -113,7 +122,7 @@ def generate_pdf(data):
         .left {{
           width: 60%;
           padding: 5px;
-          text-align: left; /* Rasimni chapga siljitish */
+          text-align: left;
         }}
         .left img {{
           max-width: 100%;
@@ -131,7 +140,6 @@ def generate_pdf(data):
           flex-wrap: wrap;
         }}
         .category-column {{
-          background: #fff;
           padding: 5px;
           border: 1px solid #ddd;
           border-radius: 3px;
@@ -145,12 +153,6 @@ def generate_pdf(data):
           width: 10px;
           height: 10px; 
           vertical-align: text-top;
-        }}
-        .total {{
-          text-align: right;
-          font-weight: bold;
-          font-size: 16px;
-          margin-top: 5px;
         }}
       </style>
     </head>
