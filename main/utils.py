@@ -163,7 +163,7 @@ def generate_pdf(data):
             width: 7px !important;
             height: 7px !important;
             margin-left: 5px;
-            magin-buttom: 2px;
+            magin-buttom: 10px;
             display: inline-block;
             vertical-align: middle;
             page-break-inside: avoid;
