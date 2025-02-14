@@ -115,6 +115,7 @@ def generate_pdf(data):
           box-sizing: border-box;
           margin-top: 10px;
           margin-bottom: 50px; /* Footer uchun bo‘sh joy */
+          gap: 10px;
         }}
         .left {{
           width: 60%;
@@ -151,7 +152,7 @@ def generate_pdf(data):
         .result img {{
           width: 12px;
           height: 12px;
-          vertical-align: middle;
+          vertical-align: text-top;
         }}
         .total {{
           text-align: right;
