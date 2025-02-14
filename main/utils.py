@@ -55,30 +55,29 @@ def generate_pdf(data):
                 symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True" style="width:12px;height:12px;vertical-align:middle;">'
             else:
                 symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False" style="width:12px;height:12px;vertical-align:middle;">'
-            html += f'<div class="result" style="margin:5px 0; font-size:14px;"><strong>{test.get("number")}.</strong> {test.get("option")} {symbol}</div>'
+            html += f'<div class="result" style="margin:3px 0; font-size:14px;"><strong>{test.get("number")}.</strong> {test.get("option")} {symbol}</div>'
         return html
 
-    def build_category_html(title, results, total):
+    def build_category_html(results, total):
         if not results:
             return ""
-        html = f'<div class="category-column" style="width:32%; box-sizing:border-box;">'
-        html += f'<h4 style="margin-bottom:5px;">{title}</h4>'
+        # Kategoriya nomlari olib tashlandi
+        html = '<div class="category-column" style="width:32%; box-sizing:border-box;">'
         html += build_results_html(results)
-        html += f'<div class="total" style="text-align:right; font-weight:bold; font-size:16px; margin-top:10px;">Jami: {total:.1f}</div>'
+        html += f'<div class="total" style="text-align:right; font-weight:bold; font-size:16px; margin-top:5px;">Jami: {total:.1f}</div>'
         html += '</div>'
         return html
 
-    # Faqat mavjud bo‘lgan kategoriyalarni chiqaramiz
     cat_columns = []
     if majburiy_results:
-        cat_columns.append(build_category_html("Majburiy fan", majburiy_results, majburiy_total))
+        cat_columns.append(build_category_html(majburiy_results, majburiy_total))
     if fan1_results:
-        cat_columns.append(build_category_html("Fan 1", fan1_results, fan1_total))
+        cat_columns.append(build_category_html(fan1_results, fan1_total))
     if fan2_results:
-        cat_columns.append(build_category_html("Fan 2", fan2_results, fan2_total))
+        cat_columns.append(build_category_html(fan2_results, fan2_total))
 
-    # Kategoriya ustunlarini flex konteynerida yonma-yon joylashtiramiz
-    categories_html = '<div class="categories" style="display:flex; justify-content:space-between; flex-wrap: wrap;">' + "".join(cat_columns) + '</div>'
+    # Kategoriya ustunlari orasidagi oraliq kamaytirildi
+    categories_html = '<div class="categories" style="display:flex; gap:5px; flex-wrap: wrap;">' + "".join(cat_columns) + '</div>'
 
     html_content = f"""
     <html>
@@ -94,18 +93,19 @@ def generate_pdf(data):
           color: #333;
           margin: 0;
           padding: 0;
+          background: #f9f9f9;
         }}
         .header {{
           text-align: center;
-          padding: 10px;
-          background: #f0f0f0;
-          border: 1px solid #ccc;
+          padding: 8px;
+          background: #e0e0e0;
+          border-bottom: 1px solid #ccc;
         }}
         .footer {{
           text-align: center;
-          padding: 10px;
-          background: #f0f0f0;
-          border: 1px solid #ccc;
+          padding: 8px;
+          background: #e0e0e0;
+          border-top: 1px solid #ccc;
           position: fixed;
           bottom: 0;
           width: 100%;
@@ -114,20 +114,50 @@ def generate_pdf(data):
           display: flex;
           box-sizing: border-box;
           margin-top: 10px;
-          margin-bottom: 70px; /* Footer uchun bo‘sh joy */
+          margin-bottom: 50px; /* Footer uchun bo‘sh joy */
         }}
         .left {{
           width: 60%;
-          padding: 10px;
+          padding: 5px;
+          text-align: left; /* Rasimni chapga siljitish */
+        }}
+        .left img {{
+          max-width: 100%;
+          height: auto;
+          object-fit: cover;
+          border-radius: 5px;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }}
         .right {{
           width: 40%;
-          padding: 10px;
+          padding: 5px;
         }}
-        img {{
-          max-width: 100%;
-          height: auto;
-          object-fit: contain;
+        .categories {{
+          display: flex;
+          gap: 5px;
+          flex-wrap: wrap;
+        }}
+        .category-column {{
+          background: #fff;
+          padding: 5px;
+          border: 1px solid #ddd;
+          border-radius: 3px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+        .result {{
+          margin: 3px 0;
+          font-size: 14px;
+        }}
+        .result img {{
+          width: 12px;
+          height: 12px;
+          vertical-align: middle;
+        }}
+        .total {{
+          text-align: right;
+          font-weight: bold;
+          font-size: 16px;
+          margin-top: 5px;
         }}
       </style>
     </head>
