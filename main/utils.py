@@ -55,11 +55,15 @@ def generate_pdf(data):
                 symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="status">'
             else:
                 symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="status">'
-            # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
-            html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
+            # Har bir natija uchun elementlarni flex layout orqali bitta qatorda ko'rsatamiz
+            html += f"""
+            <div class="result">
+                <span class="number">{test.get('number')}</span>.
+                <span class="option">{test.get('option')}</span>
+                {symbol_html}
+            </div>
+            """
         return html
-
-
 
     columns_html = ""
     if majburiy_results:
@@ -92,36 +96,17 @@ def generate_pdf(data):
     <head>
       <meta charset="utf-8">
       <style>
-        
         @page {{
             size: A5;
             margin: 10mm;
         }}
 
-        .result img {{
-            width: 8px !important;
-            height: 8px !important;
-            display: inline-block;
-            vertical-align: middle;
-            page-break-inside: avoid;
-        }}
-
-        .result {{
-            page-break-inside: avoid;
-        }}
         body {{
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
         }}
-        .number {{
-            font-family: Arial, sans-serif;
-            color: #000;
-            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
-            margin: 0;
-            padding: 0;
-            
-        }}
+
         .header {{
             text-align: center;
             margin-bottom: 10mm;
@@ -131,6 +116,7 @@ def generate_pdf(data):
             margin: 0;
             padding: 0;
         }}
+
         .container {{
             display: flex;
             width: 100%;
@@ -159,19 +145,35 @@ def generate_pdf(data):
             padding: 2mm;
             box-sizing: border-box;
             color: #000;
-            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
+            letter-spacing: 0;
         }}
+
+        /* Flex layout: natija elementlari bitta qatorda */
         .result {{
+            display: flex;
+            align-items: center;
+            gap: 4px;
             margin-bottom: 2mm;
             word-break: break-all;
+            page-break-inside: avoid;
         }}
+
+        /* Natija rasmining o'lchamlari */
+        .result-img {{
+            width: 8px !important;
+            height: 8px !important;
+            display: inline-block;
+            vertical-align: middle;
+            page-break-inside: avoid;
+        }}
+
         .total {{
             font-weight: bold;
             font-size: 11px;
             margin-top: 5mm;
             text-align: center;
             color: #000;
-            letter-spacing: 0; /* harf va raqamlar orasidagi bo'shliqni yo'q qiladi */
+            letter-spacing: 0;
         }}
       </style>
     </head>
@@ -232,3 +234,4 @@ def generate_pdf(data):
     )
 
     return pdf_url
+# End of snippet
