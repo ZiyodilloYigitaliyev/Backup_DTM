@@ -136,10 +136,11 @@ def generate_pdf(data):
             object-fit: contain; /* Rasmni ustun ichida to'g'ri joylashtirish */
         }}
         .results-container {{
-            width: 60%; /* Natijalar ustuni kengligi */
+            width: 60%;
             padding: 5mm;
             box-sizing: border-box;
-            overflow: hidden; /* Natijalar ko'p bo'lsa, ko'rsatmaslik */
+            max-height: calc(100% - 50mm); /* Header va footer balandligini hisobga olish */
+            overflow-y: auto; /* Skroll qo'shish */
         }}
         .category-column {{
             margin-bottom: 10mm; /* Kategoriyalar orasidagi bo'sh joy */
