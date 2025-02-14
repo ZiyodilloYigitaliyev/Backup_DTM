@@ -52,9 +52,9 @@ def generate_pdf(data):
         for test in results:
             status = str(test.get("status", "")).lower()
             if status == "true":
-                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True" style="width:12px;height:12px;vertical-align:middle;">'
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True" style="width:12px;height:12px;vertical-align:middle;vertical-align: text-top;">'
             else:
-                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False" style="width:12px;height:12px;vertical-align:middle;">'
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False" style="width:12px;height:12px;vertical-align:middle;vertical-align: text-top;">'
             html += f'<div class="result" style="margin:3px 0; font-size:14px;"><strong>{test.get("number")}.</strong> {test.get("option")} {symbol}</div>'
         return html
 
@@ -68,16 +68,8 @@ def generate_pdf(data):
         html += '</div>'
         return html
 
-    cat_columns = []
-    if majburiy_results:
-        cat_columns.append(build_category_html(majburiy_results, majburiy_total))
-    if fan1_results:
-        cat_columns.append(build_category_html(fan1_results, fan1_total))
-    if fan2_results:
-        cat_columns.append(build_category_html(fan2_results, fan2_total))
-
     # Kategoriya ustunlari orasidagi oraliq kamaytirildi
-    categories_html = '<div class="categories" style="display:flex; gap:5px; flex-wrap: wrap;">' + "".join(cat_columns) + '</div>'
+    categories_html = '<div class="categories" style="display:flex; gap:5px; flex-wrap: wrap;">' '</div>'
 
     html_content = f"""
     <html>
@@ -112,9 +104,10 @@ def generate_pdf(data):
         }}
         .content {{
           display: flex;
+          justify-content: space-between;
           box-sizing: border-box;
           margin-top: 10px;
-          margin-bottom: 50px; /* Footer uchun bo‘sh joy */
+          margin-bottom: 50px;
           gap: 10px;
         }}
         .left {{
@@ -126,7 +119,6 @@ def generate_pdf(data):
           max-width: 100%;
           height: auto;
           object-fit: cover;
-          border-radius: 5px;
           box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }}
         .right {{
@@ -150,8 +142,8 @@ def generate_pdf(data):
           font-size: 14px;
         }}
         .result img {{
-          width: 12px;
-          height: 12px;
+          width: 10px;
+          height: 10px; 
           vertical-align: text-top;
         }}
         .total {{
