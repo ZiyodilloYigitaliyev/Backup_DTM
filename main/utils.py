@@ -166,12 +166,12 @@ def generate_pdf(data):
              flex: 1;
          }}
          .result-img-container {{
-             width: 10%;
+             width: 4%;
          }}
          .result-img {{
-             width: 100%;
-             height: auto;
-             display: block;
+             width: 8px;
+             height: 8px;
+             display: inline-block;
          }}
          .total {{
              font-weight: bold;
