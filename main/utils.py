@@ -50,8 +50,7 @@ def generate_pdf(data):
     def build_results_html(results):
         html = ""
         for test in results:
-            raw_status = test.get("status", "")
-            status = str(raw_status).lower()
+            status = str(test.get("status", "")).lower()
             if status == "true":
                 symbol_html = (
                     '<div class="result-img-container">'
@@ -86,105 +85,90 @@ def generate_pdf(data):
     columns_html += build_category_html("Fan 1", fan1_results, fan1_total)
     columns_html += build_category_html("Fan 2", fan2_results, fan2_total)
 
-    # Sahifani grid bilan tashkil qilamiz: header, asosiy kontent va footer (hammasi bitta sahifada)
+    # Sahifani yonma-yon bo'luvchi tartibda tashkil etamiz
     html_content = f"""
     <html>
     <head>
       <meta charset="utf-8">
-    <style>
+      <style>
         @page {{
             size: A4;
-            margin: 10mm; /* Marginlarni kamaytirish */
+            margin: 10mm;
         }}
-        html, body {{
-            width: 100%;
-            height: 100%;
+        body {{
             margin: 0;
             padding: 0;
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
             color: #333;
         }}
-        .header {{
+        .header, .footer {{
             text-align: center;
-            font-size: 12pt;
-            padding: 5mm;
+            padding: 10px;
             background-color: #f0f0f0;
-            border-bottom: 2px solid #ccc;
-        }}
-        .footer {{
-            text-align: center;
-            font-size: 10pt;
-            padding: 5mm;
-            border-top: 1px solid #ccc;
+            border: 1px solid #ccc;
         }}
         .container {{
             display: flex;
-            align-items: stretch;
-            height: calc(100% - 50mm); /* Header va footer balandligini hisobga olish */
+            height: calc(100vh - 80px);
         }}
         .image-column {{
-            width: 40%; /* Rasm ustuni kengligi */
-            padding: 5mm;
+            width: 60%;
+            padding: 10px;
             box-sizing: border-box;
-            height: auto; /* Rasm ustuni balandligini avtomatik qilish */
-            background-color: #fafafa;
             border-right: 1px solid #ccc;
         }}
         .image-column img {{
-            width: 100%; /* Rasmni ustun kengligiga moslashtirish */
-            height: auto; /* Rasmning balandligini avtomatik ravishda saqlash */
-            object-fit: contain; /* Rasmni ustun ichida to'g'ri joylashtirish */
+            width: 100%;
+            height: auto;
+            object-fit: contain;
         }}
         .results-container {{
-            width: 60%;
-            padding: 5mm;
+            width: 40%;
+            padding: 10px;
             box-sizing: border-box;
-            max-height: calc(100% - 50mm); /* Header va footer balandligini hisobga olish */
-            overflow-y: auto; /* Skroll qo'shish */
+            overflow-y: auto;
         }}
         .category-column {{
-            margin-bottom: 10mm; /* Kategoriyalar orasidagi bo'sh joy */
-            page-break-inside: avoid; /* Sahifalararo bo'linmaslik */
+            margin-bottom: 20px;
+            page-break-inside: avoid;
         }}
         .category-column h4 {{
-            margin: 0;
-            font-size: 11pt;
-            text-align: left;
+            margin: 0 0 5px;
+            font-size: 16px;
             color: #0056b3;
             border-bottom: 1px solid #ccc;
-            padding-bottom: 2mm;
+            padding-bottom: 5px;
         }}
         .result {{
             display: flex;
             align-items: center;
-            gap: 5mm;
-            font-size: 9pt;
-            margin: 2mm 0;
-            page-break-inside: avoid; /* Sahifalararo bo'linmaslik */
+            margin: 5px 0;
+            font-size: 14px;
+            page-break-inside: avoid;
         }}
         .number {{
             font-weight: bold;
+            margin-right: 5px;
         }}
         .option {{
             flex: 1;
         }}
         .result-img {{
-            width: 8px;
-            height: 8px;
-            display: inline-block;
+            width: 12px;
+            height: 12px;
         }}
         .total {{
             font-weight: bold;
-            font-size: 10pt;
             text-align: right;
+            margin-top: 10px;
+            font-size: 16px;
         }}
-    </style>
+      </style>
     </head>
     <body>
        <div class="header">
            <h2>ID: {data['id']}</h2>
            <p>Telefon: {data['phone']}</p>
-           <hr>
        </div>
        <div class="container">
            <div class="image-column">
