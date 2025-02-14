@@ -147,14 +147,14 @@ def generate_pdf(data):
             else:
                 img_bytes = false_image_bytes
             if img_bytes:
-                # Har safar yangi BytesIO obyektiga o'tkazamiz
                 img_io = BytesIO(img_bytes)
                 emoji_img = Image(img_io, width=12, height=12)
             else:
                 emoji_img = Paragraph("", normal_style)
-            # Matn va emoji rasmni yonma-yon joylashtirish uchun jadval tuzamiz
+            # Inline rasm va matnni jadval orqali yonma-yon joylashtiramiz.
+            # Birinchi ustun uchun 200 pt, ikkinchi ustun uchun 15 pt kenglik belgiladik.
             row_data = [[text_paragraph, emoji_img]]
-            result_table = Table(row_data, colWidths=[None, 15], hAlign='LEFT')
+            result_table = Table(row_data, colWidths=[200, 15], hAlign='LEFT')
             result_table.setStyle(TableStyle([
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
