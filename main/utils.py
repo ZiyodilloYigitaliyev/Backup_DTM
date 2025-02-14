@@ -86,8 +86,7 @@ def generate_pdf(data):
     columns_html += build_category_html("Fan 1", fan1_results, fan1_total)
     columns_html += build_category_html("Fan 2", fan2_results, fan2_total)
 
-    # Sahifani grid bilan tashkil qilamiz: header, asosiy kontent va footer (barcha bitta sahifada)
-    # A4 sahifa bo'lgani uchun, biz header va footer uchun mm o'lcham belgilab, qolgan qismni asosiy konteynerga ajratamiz.
+    # Sahifani grid bilan tashkil qilamiz: header, asosiy kontent va footer (hammasi bitta sahifada)
     html_content = f"""
     <html>
     <head>
@@ -104,8 +103,7 @@ def generate_pdf(data):
              padding: 0;
          }}
          body {{
-             /* Grid yordamida sahifani bo‘laklarga ajatamiz:
-                header: 20mm, kontent: avtomatik, footer: 15mm */
+             /* Grid: header, kontent va footer */
              display: grid;
              grid-template-rows: 20mm auto 15mm;
          }}
@@ -121,13 +119,14 @@ def generate_pdf(data):
          }}
          .container {{
              display: flex;
-             /* Kontent qismi to‘liq balandlikni egallaydi */
+             align-items: stretch; /* Chap va o'ng ustunlar bir xil balandlikda bo'lishi uchun */
              height: 100%;
          }}
          .image-column {{
              width: 40%;
              padding: 2mm;
              box-sizing: border-box;
+             height: 100%;
          }}
          .image-column img {{
              width: 100%;
@@ -139,7 +138,7 @@ def generate_pdf(data):
              width: 60%;
              padding: 2mm;
              box-sizing: border-box;
-             overflow: hidden; /* Sahifa ichida qolishi uchun */
+             overflow: hidden;
          }}
          .category-column {{
              margin-bottom: 1mm;
@@ -201,7 +200,7 @@ def generate_pdf(data):
     </html>
     """
 
-    # PDF faylini yaratamiz
+    # PDF yaratish
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
     pdf_file_obj = BytesIO(pdf_bytes)
