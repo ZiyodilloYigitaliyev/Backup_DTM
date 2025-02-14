@@ -91,31 +91,31 @@ def generate_pdf(data):
     <html>
     <head>
       <meta charset="utf-8">
-      <style>
+    <style>
         @page {{
             size: A4;
-            margin: 10mm;
+            margin: 10mm; /* Marginlarni kamaytirish */
         }}
         html, body {{
             width: 100%;
             height: 100%;
             margin: 0;
             padding: 0;
-            font-family: 'Arial', sans-serif; /* O'zgartiring */
-            color: #333; /* Matn rangi */
+            font-family: 'Arial', sans-serif;
+            color: #333;
         }}
         .header {{
             text-align: center;
-            font-size: 12pt; /* Kattaroq sarlavha */
+            font-size: 12pt;
             padding: 5mm;
-            background-color: #f0f0f0; /* Sarlavha fon rangi */
-            border-bottom: 2px solid #ccc; /* Pastki chiziq */
+            background-color: #f0f0f0;
+            border-bottom: 2px solid #ccc;
         }}
         .footer {{
             text-align: center;
             font-size: 10pt;
             padding: 5mm;
-            border-top: 1px solid #ccc; /* Yuqori chiziq */
+            border-top: 1px solid #ccc;
         }}
         .container {{
             display: flex;
@@ -123,12 +123,12 @@ def generate_pdf(data):
             height: calc(100% - 50mm); /* Header va footer balandligini hisobga olish */
         }}
         .image-column {{
-            width: 40%;
+            width: 40%; /* Rasm ustuni kengligi */
             padding: 5mm;
             box-sizing: border-box;
             height: auto; /* Rasm ustuni balandligini avtomatik qilish */
-            background-color: #fafafa; /* Rasm ustuni fon rangi */
-            border-right: 1px solid #ccc; /* O'ng chiziq */
+            background-color: #fafafa;
+            border-right: 1px solid #ccc;
         }}
         .image-column img {{
             width: 100%; /* Rasmni ustun kengligiga moslashtirish */
@@ -136,30 +136,30 @@ def generate_pdf(data):
             object-fit: contain; /* Rasmni ustun ichida to'g'ri joylashtirish */
         }}
         .results-container {{
-            width: 60%;
+            width: 60%; /* Natijalar ustuni kengligi */
             padding: 5mm;
             box-sizing: border-box;
             overflow: hidden; /* Natijalar ko'p bo'lsa, ko'rsatmaslik */
         }}
         .category-column {{
             margin-bottom: 10mm; /* Kategoriyalar orasidagi bo'sh joy */
-            page-break-inside: avoid;
+            page-break-inside: avoid; /* Sahifalararo bo'linmaslik */
         }}
         .category-column h4 {{
             margin: 0;
-            font-size: 11pt; /* Kattaroq sarlavha */
+            font-size: 11pt;
             text-align: left;
-            color: #0056b3; /* Sarlavha rangi */
-            border-bottom: 1px solid #ccc; /* Pastki chiziq */
-            padding-bottom: 2mm; /* Pastki bo'sh joy */
+            color: #0056b3;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 2mm;
         }}
         .result {{
             display: flex;
             align-items: center;
-            gap: 5mm; /* Elementlar orasidagi bo'sh joy */
-            font-size: 9pt; /* Kattaroq matn */
-            margin: 2mm 0; /* Elementlar orasidagi bo'sh joy */
-            page-break-inside: avoid;
+            gap: 5mm;
+            font-size: 9pt;
+            margin: 2mm 0;
+            page-break-inside: avoid; /* Sahifalararo bo'linmaslik */
         }}
         .number {{
             font-weight: bold;
@@ -168,13 +168,13 @@ def generate_pdf(data):
             flex: 1;
         }}
         .result-img {{
-            width: 8px; /* Katta ikonka */
-            height: 8px; /* Katta ikonka */
+            width: 8px;
+            height: 8px;
             display: inline-block;
         }}
         .total {{
             font-weight: bold;
-            font-size: 10pt; /* Kattaroq jami */
+            font-size: 10pt;
             text-align: right;
         }}
     </style>
