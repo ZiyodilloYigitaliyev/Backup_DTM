@@ -13,6 +13,11 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
 AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 
+def chunk_list(lst, n):
+    """Ro'yxatni n ta elementli bo'laklarga ajratish."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i+n]
+
 def generate_pdf(data):
     image_src = data['image']
 
@@ -23,6 +28,7 @@ def generate_pdf(data):
     fan1_total = 0.0
     fan2_total = 0.0
 
+    # Natijalarni kategoriya bo‘yicha ajratish va total hisoblash
     for test in data["results"]:
         category = test.get("category", "")
         status = str(test.get("status", "")).lower()
@@ -41,12 +47,13 @@ def generate_pdf(data):
 
     overall_total = majburiy_total + fan1_total + fan2_total
 
-    # Ro'yxatlarni number bo'yicha tartiblash
+    # Natijalarni number bo‘yicha tartiblash
     majburiy_results = sorted(majburiy_results, key=lambda x: int(x.get('number', 0)))
     fan1_results = sorted(fan1_results, key=lambda x: int(x.get('number', 0)))
     fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
 
     def build_results_html(results):
+        """Berilgan natijalar bo‘lagidan HTML kodini hosil qiladi."""
         html = ""
         for test in results:
             raw_status = test.get("status", "")
@@ -55,7 +62,6 @@ def generate_pdf(data):
                 symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="status">'
             else:
                 symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="status">'
-            # Har bir natija uchun elementlarni flex layout orqali bitta qatorda ko'rsatamiz
             html += f"""
             <div class="result">
                 <span class="number">{test.get('number')}</span>.
@@ -65,31 +71,23 @@ def generate_pdf(data):
             """
         return html
 
+    def build_category_html(title, results, total):
+        """Har bir kategoriya uchun 30 tadan bo‘laklarga ajratilgan natijalarni va jami natijani chiqaruvchi HTML."""
+        if not results:
+            return ""
+        category_html = f'<div class="category-column"><h4>{title}</h4><div class="sub-columns">'
+        # Natijalarni 30 tadan bo'laklarga ajratamiz
+        for chunk in chunk_list(results, 30):
+            chunk_html = build_results_html(chunk)
+            category_html += f'<div class="sub-column">{chunk_html}</div>'
+        category_html += f'</div><div class="total">Jami: {total:.1f}</div></div>'
+        return category_html
+
+    # Har uchta kategoriya uchun HTML qismini yig‘amiz
     columns_html = ""
-    if majburiy_results:
-        majburiy_html = build_results_html(majburiy_results)
-        columns_html += f"""
-         <div class="result-column">
-             {majburiy_html}
-             <div class="total">Jami: {majburiy_total:.1f}</div>
-         </div>
-        """
-    if fan1_results:
-        fan1_html = build_results_html(fan1_results)
-        columns_html += f"""
-         <div class="result-column">
-             {fan1_html}
-             <div class="total">Jami: {fan1_total:.1f}</div>
-         </div>
-        """
-    if fan2_results:
-        fan2_html = build_results_html(fan2_results)
-        columns_html += f"""
-         <div class="result-column">
-             {fan2_html}
-             <div class="total">Jami: {fan2_total:.1f}</div>
-         </div>
-        """
+    columns_html += build_category_html("Majburiy fan", majburiy_results, majburiy_total)
+    columns_html += build_category_html("Fan 1", fan1_results, fan1_total)
+    columns_html += build_category_html("Fan 2", fan2_results, fan2_total)
 
     html_content = f"""
     <html>
@@ -121,8 +119,9 @@ def generate_pdf(data):
             display: flex;
             width: 100%;
         }}
+
         .image-column {{
-            width: 60%;
+            width: 40%;
             padding: 2mm;
             box-sizing: border-box;
         }}
@@ -131,24 +130,35 @@ def generate_pdf(data):
             max-height: 600px;
             object-fit: contain;
         }}
+
         .results-container {{
-            display: flex;
-            flex: 1;
+            width: 60%;
             padding: 2mm;
             box-sizing: border-box;
-            gap: 2mm;
-        }}
-        .result-column {{
-            flex: 1;
-            font-size: 10px;
-            line-height: 1;
-            padding: 2mm;
-            box-sizing: border-box;
-            color: #000;
-            letter-spacing: 0;
         }}
 
-        /* Flex layout: natija elementlari bitta qatorda */
+        .category-column {{
+            margin-bottom: 10mm;
+            page-break-inside: avoid;
+        }}
+        .category-column h4 {{
+            margin-bottom: 5mm;
+            text-align: center;
+            color: #333;
+        }}
+
+        .sub-columns {{
+            display: flex;
+            gap: 5mm;
+            flex-wrap: wrap;
+        }}
+
+        .sub-column {{
+            flex: 1;
+            min-width: 80px;
+            max-width: 120px;
+        }}
+
         .result {{
             display: flex;
             align-items: center;
@@ -158,24 +168,30 @@ def generate_pdf(data):
             page-break-inside: avoid;
         }}
 
-        /* Natija rasmining o'lchamlari */
         .result-img {{
             width: 7px !important;
             height: 7px !important;
             margin-left: 5px;
-            magin-buttom: 10px;
             display: inline-block;
             vertical-align: middle;
             page-break-inside: avoid;
+        }}
+
+        .number {{
+            font-weight: bold;
         }}
 
         .total {{
             font-weight: bold;
             font-size: 11px;
             margin-top: 5mm;
-            text-align: center;
+            text-align: right;
             color: #000;
-            letter-spacing: 0;
+        }}
+
+        .footer {{
+            text-align: center;
+            margin-top: 10mm;
         }}
       </style>
     </head>
@@ -193,14 +209,14 @@ def generate_pdf(data):
              {columns_html}
          </div>
       </div>
-      <div class="header" style="margin-top: 10mm;">
+      <div class="footer">
           <h3>Umumiy natija: {overall_total:.1f}</h3>
       </div>
     </body>
     </html>
     """
 
-    # PDF faylini yaratamiz
+    # PDF faylini yaratish
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
 
     # Yaratilgan fayl uchun noyob nom (pdf-results papkasiga saqlanadi)
@@ -217,7 +233,7 @@ def generate_pdf(data):
         region_name=AWS_S3_REGION_NAME
     )
 
-    # PDF faylini S3 bucketga, "pdf-results/" papkasiga yuklaymiz
+    # PDF faylini S3 bucketga yuklaymiz
     s3_client.upload_fileobj(
         pdf_file_obj,
         AWS_STORAGE_BUCKET_NAME,
@@ -236,4 +252,3 @@ def generate_pdf(data):
     )
 
     return pdf_url
-# End of snippet
