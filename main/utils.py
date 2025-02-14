@@ -104,7 +104,7 @@ def generate_pdf(data):
           border-bottom: 1px solid #ccc;
         }}
 
-        .header img.logo {{
+        .header img{{
           position: absolute;
           left: 10px;
           top: 50%;
