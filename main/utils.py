@@ -120,9 +120,10 @@ def generate_pdf(data):
           gap: 10px;
         }}
         .left {{
-          width: 60%;
+          width: 59%;
           padding: 5px;
           text-align: left;
+          margin-right:15px;
         }}
         .left img {{
           max-width: 100%;
@@ -141,9 +142,7 @@ def generate_pdf(data):
         }}
         .category-column {{
           padding: 5px;
-          border: 1px solid #ddd;
           border-radius: 3px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }}
         .result {{
           margin: 3px 0;
