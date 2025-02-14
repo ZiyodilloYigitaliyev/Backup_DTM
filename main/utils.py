@@ -52,9 +52,9 @@ def generate_pdf(data):
             raw_status = test.get("status", "")
             status = str(raw_status).lower()
             if status == "true":
-                symbol_html = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" width="12" height="12" alt="✅">'
+                symbol_html = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" width="12" height="12">'
             else:
-                symbol_html = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" width="12" height="12" alt="❌">'
+                symbol_html = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" width="12" height="12">'
             # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
             html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
         return html

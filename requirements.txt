@@ -17,6 +17,7 @@ urllib3==2.3.0
 whitenoise==6.8.2
 psycopg2==2.9.10
 gunicorn==23.0.0
-weasyprint
+weasyprint==53.0
+pydyf==0.2.4
 Pillow==9.0.0
 # reportlab
