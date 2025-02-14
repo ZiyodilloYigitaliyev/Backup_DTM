@@ -160,8 +160,8 @@ def generate_pdf(data):
 
         /* Natija rasmining o'lchamlari */
         .result-img {{
-            width: 8px !important;
-            height: 8px !important;
+            width: 7px !important;
+            height: 7px !important;
             margin-left: 5px;
             magin-buttom: 2px;
             display: inline-block;
