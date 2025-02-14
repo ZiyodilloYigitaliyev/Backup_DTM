@@ -16,7 +16,7 @@ AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 def generate_pdf(data):
     image_src = data['image']
 
-    # Kategoriya bo‘yicha natijalarni ajratamiz va jami hisoblaymiz
+    # Natijalarni ajratamiz va jami hisoblaymiz
     majburiy_results = []
     fan1_results = []
     fan2_results = []
@@ -52,26 +52,27 @@ def generate_pdf(data):
         for test in results:
             status = str(test.get("status", "")).lower()
             if status == "true":
-                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True" style="width:12px;height:12px;vertical-align:middle;">'
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True">'
             else:
-                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False" style="width:12px;height:12px;vertical-align:middle;">'
-            html += f'<div style="margin:5px 0; font-size:14px;"><strong>{test.get("number")}.</strong> {test.get("option")} {symbol}</div>'
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False">'
+            html += f'<div class="result"><strong>{test.get("number")}.</strong> {test.get("option")} {symbol}</div>'
         return html
 
     def build_category_html(title, results, total):
         if not results:
             return ""
-        html = f'<div style="margin-bottom:20px;"><h4 style="margin-bottom:5px;">{title}</h4>'
+        html = f'<div class="category-column"><h4>{title}</h4>'
         html += build_results_html(results)
-        html += f'<div style="text-align:right; font-weight:bold; font-size:16px;">Jami: {total:.1f}</div></div>'
+        html += f'<div class="total">Jami: {total:.1f}</div></div>'
         return html
 
-    categories_html = ""
-    categories_html += build_category_html("Majburiy fan", majburiy_results, majburiy_total)
-    categories_html += build_category_html("Fan 1", fan1_results, fan1_total)
-    categories_html += build_category_html("Fan 2", fan2_results, fan2_total)
+    # Har bir kategoriya uchun ustunlar
+    cat1_html = build_category_html("Majburiy fan", majburiy_results, majburiy_total)
+    cat2_html = build_category_html("Fan 1", fan1_results, fan1_total)
+    cat3_html = build_category_html("Fan 2", fan2_results, fan2_total)
+    # Yonma-yon chiqishi uchun flex konteyneri
+    categories_html = f'<div class="categories">{cat1_html}{cat2_html}{cat3_html}</div>'
 
-    # Barcha elementlarni bitta sahifada ikki ustun shaklida joylashtiramiz
     html_content = f"""
     <html>
     <head>
@@ -106,9 +107,29 @@ def generate_pdf(data):
           width: 40%;
           padding: 10px;
         }}
-        img {{
-          max-width: 100%;
-          height: auto;
+        /* Kategoriya ustunlarini yonma-yon joylashtirish */
+        .categories {{
+          display: flex;
+          justify-content: space-between;
+        }}
+        .category-column {{
+          width: 32%;
+          box-sizing: border-box;
+        }}
+        .result {{
+          margin: 5px 0;
+          font-size: 14px;
+        }}
+        .result img {{
+          width: 12px;
+          height: 12px;
+          vertical-align: middle;
+        }}
+        .total {{
+          text-align: right;
+          font-weight: bold;
+          font-size: 16px;
+          margin-top: 10px;
         }}
       </style>
     </head>
