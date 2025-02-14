@@ -21,13 +21,9 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
 AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 
-# Emoji va Unicode belgilarini qo'llab-quvvatlaydigan fontni ro'yxatdan o'tkazamiz
-# Font faylini static papkadan yuklaymiz
-font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'Symbola.ttf')
-pdfmetrics.registerFont(TTFont('Symbola', font_path))
-base_font = 'Symbola'
-# green_check_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'green_check.png')
-# red_cross_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'red_cross.png')
+# Standart font: kerak bo'lsa, siz o'zingizga mos fontni ro'yxatdan o'tkazishingiz mumkin
+base_font = 'Helvetica'
+
 # Gorizontal chiziq (horizontal rule) uchun maxsus Flowable
 class HR(Flowable):
     def __init__(self, width, thickness=1, color=colors.black):
@@ -113,54 +109,92 @@ def generate_pdf(data):
         alignment=1
     )
 
+    # S3 URL-dagi emoji rasmlarni bir marta yuklab olamiz
+    true_emoji_url = "https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png"
+    false_emoji_url = "https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png"
+
+    try:
+        response_true = requests.get(true_emoji_url)
+        if response_true.status_code == 200:
+            true_image_bytes = response_true.content
+        else:
+            true_image_bytes = None
+    except Exception:
+        true_image_bytes = None
+
+    try:
+        response_false = requests.get(false_emoji_url)
+        if response_false.status_code == 200:
+            false_image_bytes = response_false.content
+        else:
+            false_image_bytes = None
+    except Exception:
+        false_image_bytes = None
+
     # Test natijalarini shakllantirish uchun funksiya
-    def build_results_paragraphs(results):
-        paras = []  # Bu yerda 4 ta bo'shliq yoki 1 tab bilan indentatsiya kerak
+    def build_results_flowables(results):
+        flowables = []
         for test in results:
             number = test.get('number')
             option = test.get('option')
             status = str(test.get("status", "")).lower()
+            # Matn: raqam va test variantlari
+            text_content = f"<b>{number}.</b> {option}"
+            text_paragraph = Paragraph(text_content, normal_style)
+            # Emoji uchun rasmni tanlaymiz
             if status == "true":
-                emoji_html = f'<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/pngwing.com.png" width="12" height="12"/>'
+                img_bytes = true_image_bytes
             else:
-                emoji_html = f'<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/red_cross.png" width="12" height="12"/>'
-            text = f"<b>{number}.</b> {option} {emoji_html}"
-            para = Paragraph(text, normal_style)
-            paras.append(para)
-        return paras
-
+                img_bytes = false_image_bytes
+            if img_bytes:
+                # Har safar yangi BytesIO obyektiga o'tkazamiz
+                img_io = BytesIO(img_bytes)
+                emoji_img = Image(img_io, width=12, height=12)
+            else:
+                emoji_img = Paragraph("", normal_style)
+            # Matn va emoji rasmni yonma-yon joylashtirish uchun jadval tuzamiz
+            row_data = [[text_paragraph, emoji_img]]
+            result_table = Table(row_data, colWidths=[None, 15], hAlign='LEFT')
+            result_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            flowables.append(result_table)
+        return flowables
 
     # Har bir fan bo‘yicha ustunlarni tayyorlaymiz
     columns_data = []
     if majburiy_results:
         col = []
-        col.extend(build_results_paragraphs(majburiy_results))
+        col.extend(build_results_flowables(majburiy_results))
         col.append(Spacer(1, 4))
         col.append(Paragraph(f"Jami: {majburiy_total:.1f}", category_total_style))
         columns_data.append(col)
     if fan1_results:
         col = []
-        col.extend(build_results_paragraphs(fan1_results))
+        col.extend(build_results_flowables(fan1_results))
         col.append(Spacer(1, 4))
         col.append(Paragraph(f"Jami: {fan1_total:.1f}", category_total_style))
         columns_data.append(col)
     if fan2_results:
         col = []
-        col.extend(build_results_paragraphs(fan2_results))
+        col.extend(build_results_flowables(fan2_results))
         col.append(Spacer(1, 4))
         col.append(Paragraph(f"Jami: {fan2_total:.1f}", category_total_style))
         columns_data.append(col)
 
-    # Rasmni yuklab olish va tayyorlash
+    # Asosiy rasmni yuklab olish va tayyorlash (PDF yuqori qismidagi katta rasm)
     try:
         response = requests.get(image_src)
         image_data = BytesIO(response.content)
         img = Image(image_data)
-        # Rasm kengligini belgilaymiz (taxminan 60% maydon uchun)
         desired_width = 300
         img.drawWidth = desired_width
         img.drawHeight = desired_width * img.imageHeight / img.imageWidth
-    except Exception as e:
+    except Exception:
         img = Paragraph("Rasm yuklanmadi", normal_style)
 
     # Natijalar ustunlarini jadval shaklida joylaymiz (agar mavjud bo'lsa)
@@ -169,10 +203,10 @@ def generate_pdf(data):
         results_table = Table([columns_data], hAlign='LEFT')
         results_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0,0), (-1,-1), 4),
-            ('RIGHTPADDING', (0,0), (-1,-1), 4),
-            ('TOPPADDING', (0,0), (-1,-1), 2),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
         ]))
 
     # Asosiy jadval: rasm va natijalar yonma-yon
@@ -180,19 +214,18 @@ def generate_pdf(data):
     main_table = Table(main_table_data, colWidths=[desired_width, None])
     main_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
     ]))
 
-    # PDF hujjatini yaratish uchun story (oqim) ro'yxatini tuzamiz
+    # PDF hujjatini yaratish uchun oqim (story) ro'yxatini tuzamiz
     story = []
     story.append(Paragraph(f"ID: {data['id']}", header_style))
     story.append(Paragraph(f"Telefon: {data['phone']}", normal_style))
     story.append(Spacer(1, 6))
-    # Sahifa kengligini hisobga olamiz (chap va o'ng margin 20pt)
-    page_width = A4[0] - 40
+    page_width = A4[0] - 40  # Chap va o'ng marginni hisobga olamiz
     story.append(HR(width=page_width, thickness=1, color=colors.black))
     story.append(Spacer(1, 12))
     story.append(main_table)
@@ -206,7 +239,6 @@ def generate_pdf(data):
 
     # Yaratilgan fayl uchun noyob nom (pdf-results papkasida saqlanadi)
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
-
     pdf_file_obj = BytesIO(pdf_bytes)
 
     # boto3 orqali PDFni S3 bucketga yuklaymiz
