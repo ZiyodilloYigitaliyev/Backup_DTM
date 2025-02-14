@@ -99,16 +99,16 @@ def generate_pdf(data):
         }}
 
         .result img {{
-              width: 12px !important;
-              height: 12px !important;
-              display: inline-block;
-              vertical-align: middle;
-              page-break-inside: avoid;
-            }}
+            width: 12px !important;
+            height: 12px !important;
+            display: inline-block;
+            vertical-align: middle;
+            page-break-inside: avoid;
+        }}
 
-            .result {{
-              page-break-inside: avoid;
-            }}
+        .result {{
+            page-break-inside: avoid;
+        }}
         body {{
             font-family: Arial, sans-serif;
             margin: 0;
