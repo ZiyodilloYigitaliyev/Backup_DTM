@@ -104,14 +104,6 @@ def generate_pdf(data):
           border-bottom: 1px solid #ccc;
         }}
 
-        .header img{{
-          position: absolute;
-          left: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          height: 50px;
-          filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.3));
-        }}
         .footer {{
           text-align: center;
           padding: 8px;
@@ -167,7 +159,6 @@ def generate_pdf(data):
     </head>
     <body>
       <div class="header" ">
-          <img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/logo-titul.png" alt="Logo">
           <div>
             <h2>ID: {data['id']}</h2>
             <p>Telefon: {data['phone']}</p>
