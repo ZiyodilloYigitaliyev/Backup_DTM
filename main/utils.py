@@ -99,8 +99,8 @@ def generate_pdf(data):
         }}
 
         .result img {{
-            width: 12px !important;
-            height: 12px !important;
+            width: 10px !important;
+            height: 10px !important;
             display: inline-block;
             vertical-align: middle;
             page-break-inside: avoid;
