@@ -162,6 +162,8 @@ def generate_pdf(data):
         .result-img {{
             width: 8px !important;
             height: 8px !important;
+            margin-left: 5px;
+            magin-buttom: 2px;
             display: inline-block;
             vertical-align: middle;
             page-break-inside: avoid;
