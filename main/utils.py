@@ -16,6 +16,7 @@ AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 def generate_pdf(data):
     image_src = data['image']
 
+    # Kategoriya bo‘yicha natijalarni ajratamiz va jami hisoblaymiz
     majburiy_results = []
     fan1_results = []
     fan2_results = []
@@ -23,7 +24,6 @@ def generate_pdf(data):
     fan1_total = 0.0
     fan2_total = 0.0
 
-    # Natijalarni kategoriya bo‘yicha ajratish va jami hisoblash
     for test in data["results"]:
         category = test.get("category", "")
         status = str(test.get("status", "")).lower()
@@ -43,149 +43,96 @@ def generate_pdf(data):
     overall_total = majburiy_total + fan1_total + fan2_total
 
     # Ro'yxatlarni tartiblash
-    majburiy_results = sorted(majburiy_results, key=lambda x: int(x.get('number', 0)))
-    fan1_results = sorted(fan1_results, key=lambda x: int(x.get('number', 0)))
-    fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
+    majburiy_results.sort(key=lambda x: int(x.get('number', 0)))
+    fan1_results.sort(key=lambda x: int(x.get('number', 0)))
+    fan2_results.sort(key=lambda x: int(x.get('number', 0)))
 
     def build_results_html(results):
         html = ""
         for test in results:
             status = str(test.get("status", "")).lower()
             if status == "true":
-                symbol_html = (
-                    '<div class="result-img-container">'
-                    '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="status">'
-                    '</div>'
-                )
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="True" style="width:12px;height:12px;vertical-align:middle;">'
             else:
-                symbol_html = (
-                    '<div class="result-img-container">'
-                    '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="status">'
-                    '</div>'
-                )
-            html += f"""
-            <div class="result">
-                <span class="number">{test.get('number')}</span>.
-                <span class="option">{test.get('option')}</span>
-                {symbol_html}
-            </div>
-            """
+                symbol = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="False" style="width:12px;height:12px;vertical-align:middle;">'
+            html += f'<div style="margin:5px 0; font-size:14px;"><strong>{test.get("number")}.</strong> {test.get("option")} {symbol}</div>'
         return html
 
     def build_category_html(title, results, total):
         if not results:
             return ""
-        category_html = f'<div class="category-column"><h4>{title}</h4>'
-        category_html += build_results_html(results)
-        category_html += f'<div class="total">Jami: {total:.1f}</div></div>'
-        return category_html
+        html = f'<div style="margin-bottom:20px;"><h4 style="margin-bottom:5px;">{title}</h4>'
+        html += build_results_html(results)
+        html += f'<div style="text-align:right; font-weight:bold; font-size:16px;">Jami: {total:.1f}</div></div>'
+        return html
 
-    columns_html = ""
-    columns_html += build_category_html("Majburiy fan", majburiy_results, majburiy_total)
-    columns_html += build_category_html("Fan 1", fan1_results, fan1_total)
-    columns_html += build_category_html("Fan 2", fan2_results, fan2_total)
+    categories_html = ""
+    categories_html += build_category_html("Majburiy fan", majburiy_results, majburiy_total)
+    categories_html += build_category_html("Fan 1", fan1_results, fan1_total)
+    categories_html += build_category_html("Fan 2", fan2_results, fan2_total)
 
-    # Sahifani yonma-yon bo'luvchi tartibda tashkil etamiz
+    # Barcha elementlarni bitta sahifada ikki ustun shaklida joylashtiramiz
     html_content = f"""
     <html>
     <head>
       <meta charset="utf-8">
       <style>
         @page {{
-            size: A4;
-            margin: 10mm;
+          size: A4;
+          margin: 10mm;
         }}
         body {{
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            color: #333;
+          font-family: Arial, sans-serif;
+          color: #333;
+          margin: 0;
+          padding: 0;
         }}
         .header, .footer {{
-            text-align: center;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
+          text-align: center;
+          padding: 10px;
+          background: #f0f0f0;
+          border: 1px solid #ccc;
         }}
-        .container {{
-            display: flex;
-            height: calc(100vh - 80px);
+        .content {{
+          display: flex;
+          width: 100%;
+          box-sizing: border-box;
         }}
-        .image-column {{
-            width: 60%;
-            padding: 10px;
-            box-sizing: border-box;
-            border-right: 1px solid #ccc;
+        .left {{
+          width: 60%;
+          padding: 10px;
         }}
-        .image-column img {{
-            width: 100%;
-            height: auto;
-            object-fit: contain;
+        .right {{
+          width: 40%;
+          padding: 10px;
         }}
-        .results-container {{
-            width: 40%;
-            padding: 10px;
-            box-sizing: border-box;
-            overflow-y: auto;
-        }}
-        .category-column {{
-            margin-bottom: 20px;
-            page-break-inside: avoid;
-        }}
-        .category-column h4 {{
-            margin: 0 0 5px;
-            font-size: 16px;
-            color: #0056b3;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-        }}
-        .result {{
-            display: flex;
-            align-items: center;
-            margin: 5px 0;
-            font-size: 14px;
-            page-break-inside: avoid;
-        }}
-        .number {{
-            font-weight: bold;
-            margin-right: 5px;
-        }}
-        .option {{
-            flex: 1;
-        }}
-        .result-img {{
-            width: 12px;
-            height: 12px;
-        }}
-        .total {{
-            font-weight: bold;
-            text-align: right;
-            margin-top: 10px;
-            font-size: 16px;
+        img {{
+          max-width: 100%;
+          height: auto;
         }}
       </style>
     </head>
     <body>
-       <div class="header">
-           <h2>ID: {data['id']}</h2>
-           <p>Telefon: {data['phone']}</p>
-       </div>
-       <div class="container">
-           <div class="image-column">
-              <img src="{image_src}" alt="Rasm">
-           </div>
-           <div class="results-container">
-              {columns_html}
-           </div>
-       </div>
-       <div class="footer">
-           <h3>Umumiy natija: {overall_total:.1f}</h3>
-       </div>
+      <div class="header">
+         <h2>ID: {data['id']}</h2>
+         <p>Telefon: {data['phone']}</p>
+      </div>
+      <div class="content">
+         <div class="left">
+           <img src="{image_src}" alt="Rasm">
+         </div>
+         <div class="right">
+           {categories_html}
+         </div>
+      </div>
+      <div class="footer">
+         <h3>Umumiy natija: {overall_total:.1f}</h3>
+      </div>
     </body>
     </html>
     """
 
-    # PDF yaratish
+    # PDF yaratish va S3 ga yuklash
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
     pdf_file_obj = BytesIO(pdf_bytes)
