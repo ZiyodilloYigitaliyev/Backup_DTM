@@ -13,11 +13,6 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('BUCKET_NAME')
 AWS_S3_REGION_NAME = os.getenv('AWS_REGION_NAME') or 'us-east-1'
 
-def chunk_list(lst, n):
-    """Ro'yxatni n ta elementli bo'laklarga ajratish."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i+n]
-
 def generate_pdf(data):
     image_src = data['image']
 
@@ -28,7 +23,7 @@ def generate_pdf(data):
     fan1_total = 0.0
     fan2_total = 0.0
 
-    # Natijalarni kategoriya bo‘yicha ajratish va total hisoblash
+    # Natijalarni kategoriyalar bo‘yicha ajratamiz va jami natijalarni hisoblaymiz
     for test in data["results"]:
         category = test.get("category", "")
         status = str(test.get("status", "")).lower()
@@ -47,21 +42,28 @@ def generate_pdf(data):
 
     overall_total = majburiy_total + fan1_total + fan2_total
 
-    # Natijalarni number bo‘yicha tartiblash
+    # Ro'yxatlarni number bo'yicha tartiblash
     majburiy_results = sorted(majburiy_results, key=lambda x: int(x.get('number', 0)))
     fan1_results = sorted(fan1_results, key=lambda x: int(x.get('number', 0)))
     fan2_results = sorted(fan2_results, key=lambda x: int(x.get('number', 0)))
 
     def build_results_html(results):
-        """Berilgan natijalar bo‘lagidan HTML kodini hosil qiladi."""
         html = ""
         for test in results:
             raw_status = test.get("status", "")
             status = str(raw_status).lower()
             if status == "true":
-                symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="status">'
+                symbol_html = (
+                    '<div class="result-img-container">'
+                    '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="status">'
+                    '</div>'
+                )
             else:
-                symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="status">'
+                symbol_html = (
+                    '<div class="result-img-container">'
+                    '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="status">'
+                    '</div>'
+                )
             html += f"""
             <div class="result">
                 <span class="number">{test.get('number')}</span>.
@@ -71,23 +73,29 @@ def generate_pdf(data):
             """
         return html
 
-    def build_category_html(title, results, total):
-        """Har bir kategoriya uchun 30 tadan bo‘laklarga ajratilgan natijalarni va jami natijani chiqaruvchi HTML."""
-        if not results:
-            return ""
-        category_html = f'<div class="category-column"><h4>{title}</h4><div class="sub-columns">'
-        # Natijalarni 30 tadan bo'laklarga ajratamiz
-        for chunk in chunk_list(results, 30):
-            chunk_html = build_results_html(chunk)
-            category_html += f'<div class="sub-column">{chunk_html}</div>'
-        category_html += f'</div><div class="total">Jami: {total:.1f}</div></div>'
-        return category_html
+    # Har bir kategoriya uchun natijalar HTML qismini yig'amiz
+    majburiy_html = build_results_html(majburiy_results)
+    fan1_html = build_results_html(fan1_results)
+    fan2_html = build_results_html(fan2_results)
 
-    # Har uchta kategoriya uchun HTML qismini yig‘amiz
-    columns_html = ""
-    columns_html += build_category_html("Majburiy fan", majburiy_results, majburiy_total)
-    columns_html += build_category_html("Fan 1", fan1_results, fan1_total)
-    columns_html += build_category_html("Fan 2", fan2_results, fan2_total)
+    # Barcha ma'lumotlarni bitta sahifada, chap tomonda rasm va o'ng tomonda natijalar shaklida joylaymiz
+    columns_html = f"""
+         <div class="category-column">
+             <h4>Majburiy fan</h4>
+             {majburiy_html}
+             <div class="total">Jami: {majburiy_total:.1f}</div>
+         </div>
+         <div class="category-column">
+             <h4>Fan 1</h4>
+             {fan1_html}
+             <div class="total">Jami: {fan1_total:.1f}</div>
+         </div>
+         <div class="category-column">
+             <h4>Fan 2</h4>
+             {fan2_html}
+             <div class="total">Jami: {fan2_total:.1f}</div>
+         </div>
+    """
 
     html_content = f"""
     <html>
@@ -98,28 +106,31 @@ def generate_pdf(data):
             size: A4;
             margin: 10mm;
         }}
-
-        body {{
-            font-family: Arial, sans-serif;
+        html, body {{
+            width: 100%;
+            height: 100%;
             margin: 0;
             padding: 0;
         }}
-
+        body {{
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }}
         .header {{
             text-align: center;
-            margin-bottom: 10mm;
+            margin-bottom: 5mm;
         }}
         .header h2, .header p {{
             color: #000;
             margin: 0;
             padding: 0;
         }}
-
         .container {{
             display: flex;
+            flex-direction: row;
             width: 100%;
+            height: calc(100% - 30mm);
         }}
-
         .image-column {{
             width: 40%;
             padding: 2mm;
@@ -127,71 +138,64 @@ def generate_pdf(data):
         }}
         .image-column img {{
             width: 100%;
-            max-height: 600px;
+            height: auto;
             object-fit: contain;
         }}
-
         .results-container {{
             width: 60%;
             padding: 2mm;
             box-sizing: border-box;
+            overflow-y: auto;
         }}
-
         .category-column {{
-            margin-bottom: 10mm;
+            margin-bottom: 3mm;
             page-break-inside: avoid;
         }}
         .category-column h4 {{
-            margin-bottom: 5mm;
-            text-align: center;
+            margin-bottom: 2mm;
+            text-align: left;
             color: #333;
+            font-size: 12px;
         }}
-
-        .sub-columns {{
-            display: flex;
-            gap: 5mm;
-            flex-wrap: wrap;
-        }}
-
-        .sub-column {{
-            flex: 1;
-            min-width: 80px;
-            max-width: 120px;
-        }}
-
         .result {{
             display: flex;
             align-items: center;
             gap: 4px;
-            margin-bottom: 2mm;
-            word-break: break-all;
+            margin-bottom: 1mm;
+            font-size: 8px;
             page-break-inside: avoid;
         }}
-
-        .result-img {{
-            width: 7px !important;
-            height: 7px !important;
-            margin-left: 5px;
-            display: inline-block;
-            vertical-align: middle;
-            page-break-inside: avoid;
-        }}
-
         .number {{
             font-weight: bold;
         }}
-
+        .option {{
+            flex: 1;
+        }}
+        /* Natija rasm containerining kengligini o'zgartirish orqali rasm o'lchami ham moslashadi */
+        .result-img-container {{
+            width: 10%; /* Agar ustun kengligi o'zgaradigan bo'lsa, bu qiymatni moslashtiring */
+        }}
+        .result-img {{
+            width: 100%;
+            height: auto;
+            display: block;
+        }}
         .total {{
             font-weight: bold;
-            font-size: 11px;
-            margin-top: 5mm;
+            font-size: 9px;
             text-align: right;
             color: #000;
+            margin-top: 2mm;
         }}
-
         .footer {{
             text-align: center;
-            margin-top: 10mm;
+            margin-top: 2mm;
+            font-size: 10px;
+            color: #000;
+        }}
+        /* Barcha ma'lumotlar bitta sahifada bo'lishi uchun page-break o'chirilgan */
+        .category-column, .result {{
+            page-break-inside: avoid;
         }}
       </style>
     </head>
@@ -216,13 +220,11 @@ def generate_pdf(data):
     </html>
     """
 
-    # PDF faylini yaratish
+    # PDF faylini yaratamiz
     pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
 
     # Yaratilgan fayl uchun noyob nom (pdf-results papkasiga saqlanadi)
     random_filename = f"pdf-results/{uuid.uuid4()}.pdf"
-
-    # BytesIO obyektiga aylantiramiz
     pdf_file_obj = BytesIO(pdf_bytes)
 
     # boto3 S3 clientini yaratamiz
