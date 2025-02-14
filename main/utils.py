@@ -97,7 +97,7 @@ def generate_pdf(data):
       <meta charset="utf-8">
       <style>
         @page {{
-            size: A5;
+            size: A4;
             margin: 10mm;
         }}
 
