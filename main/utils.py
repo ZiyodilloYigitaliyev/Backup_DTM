@@ -126,15 +126,20 @@ def generate_pdf(data):
             width: 40%;
             padding: 5mm;
             box-sizing: border-box;
-            height: 100%;
+            height: auto; /* Rasm ustuni balandligini avtomatik qilish */
             background-color: #fafafa; /* Rasm ustuni fon rangi */
             border-right: 1px solid #ccc; /* O'ng chiziq */
+        }}
+        .image-column img {{
+            width: 100%; /* Rasmni ustun kengligiga moslashtirish */
+            height: auto; /* Rasmning balandligini avtomatik ravishda saqlash */
+            object-fit: contain; /* Rasmni ustun ichida to'g'ri joylashtirish */
         }}
         .results-container {{
             width: 60%;
             padding: 5mm;
             box-sizing: border-box;
-            overflow: hidden;
+            overflow: hidden; /* Natijalar ko'p bo'lsa, ko'rsatmaslik */
         }}
         .category-column {{
             margin-bottom: 10mm; /* Kategoriyalar orasidagi bo'sh joy */
