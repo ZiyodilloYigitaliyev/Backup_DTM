@@ -52,9 +52,9 @@ def generate_pdf(data):
             raw_status = test.get("status", "")
             status = str(raw_status).lower()
             if status == "true":
-                symbol_html = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" width="12" height="12" alt="status">'
+                symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/chekvector.png" alt="status">'
             else:
-                symbol_html = '<img src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" width="12" height="12" alt="status">'
+                symbol_html = '<img class="result-img" src="https://scan-app-uploads.s3.eu-north-1.amazonaws.com/tru-folse-images/crossvector.png" alt="status">'
             # Raqamlar uchun alohida span qo'shamiz, ularni keyinchalik alohida font bilan ko'rsatamiz
             html += f"<div class='result'><span class='number'>{test.get('number')}</span>. {test.get('option')} {symbol_html}</div>"
         return html
@@ -98,7 +98,17 @@ def generate_pdf(data):
             margin: 10mm;
         }}
 
-        
+        .result img {{
+              width: 12px !important;
+              height: 12px !important;
+              display: inline-block;
+              vertical-align: middle;
+              page-break-inside: avoid;
+            }}
+
+            .result {{
+              page-break-inside: avoid;
+            }}
         body {{
             font-family: Arial, sans-serif;
             margin: 0;
