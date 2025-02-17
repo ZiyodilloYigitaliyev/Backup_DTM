@@ -26,6 +26,7 @@ class BackupDataView(APIView):
                 # Incoming data bo'yicha iteratsiya
                 for item in incoming_data:
                     list_id = item.get("list_id")
+                    school = item.get("school")
                     category = item.get("category")
                     true_answer = item.get("true_answer")
                     order = item.get("order")
@@ -38,6 +39,7 @@ class BackupDataView(APIView):
                     # Mapping_Data obyektini yaratish
                     mapping_data_obj = Mapping_Data.objects.create(
                         list_id=list_id,
+                        school=school,
                         category=category,
                         true_answer=true_answer,
                         order=order
@@ -45,6 +47,7 @@ class BackupDataView(APIView):
 
                     backups_saved.append({
                         "list_id": mapping_data_obj.list_id,
+                        "school": mapping_data_obj.school,
                         "category": mapping_data_obj.category,
                         "true_answer": mapping_data_obj.true_answer,
                         "order": mapping_data_obj.order
