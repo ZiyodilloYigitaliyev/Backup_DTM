@@ -60,7 +60,7 @@ class ResultDataCreateAPIView(APIView):
                     status=status_val
                 )
 
-            # PDF uchun maʼlumotlarni yig‘amiz
+            # PDF uchun ma'lumotlarni yig'ish
             pdf_data = {
                 'id': user_id_val,
                 'phone': phone_val,
