@@ -29,6 +29,7 @@ class BackupDataView(APIView):
                     school = item.get("school")
                     question_class = item.get("question_class")
                     category = item.get("category")
+                    subject = item.get("subject")
                     true_answer = item.get("true_answer")
                     order = item.get("order")
 
@@ -43,6 +44,7 @@ class BackupDataView(APIView):
                         school=school,
                         question_class = question_class,
                         category=category,
+                        subject = subject,
                         true_answer=true_answer,
                         order=order
                     )
@@ -52,6 +54,7 @@ class BackupDataView(APIView):
                         "school": mapping_data_obj.school,
                         "question_class" : question_class,
                         "category": mapping_data_obj.category,
+                        "subject" : subject,
                         "true_answer": mapping_data_obj.true_answer,
                         "order": mapping_data_obj.order
                     })

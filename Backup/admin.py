@@ -10,12 +10,12 @@ class Mapping_DataAdmin(admin.ModelAdmin):
     # Filter paneli uchun (bir xil list_id ga ega obyektlarni filtrlash)
     list_filter = ('list_id',)
 
-    actions = ['delete_selected_promos']
+    actions = ['delete_selected_dates']
 
     # Tanlangan promolarni o'chirish funksiyasi
-    def delete_selected_promos(self, request, queryset):
+    def delete_selected_dates(self, request, queryset):
         count = queryset.count()
         queryset.delete()
-        self.message_user(request, f"{count} ta promo muvaffaqiyatli o'chirildi.")
+        self.message_user(request, f"{count} ta malumotlar muvaffaqiyatli o'chirildi.")
 
-    delete_selected_promos.short_description = 'Tanlangan barcha Promo kodlarni o‘chirish'
+    delete_selected_dates.short_description = 'Tanlangan barcha malumotlarni o‘chirish'
