@@ -1,9 +1,10 @@
 from django.contrib import admin, messages
 from django import forms
+from django.contrib.admin.helpers import ActionForm
 from .models import Mapping_Data
 
-# Action form: qo'shimcha maydonlarni admin ro'yxatida ko'rsatish uchun
-class MappingDataActionForm(forms.Form):
+# Django adminining standart ActionForm-ni kengaytiramiz
+class MappingDataActionForm(ActionForm):
     start_list_id = forms.IntegerField(label="Boshlang'ich list_id", required=False)
     end_list_id = forms.IntegerField(label="Tugash list_id", required=False)
 
@@ -13,18 +14,14 @@ class Mapping_DataAdmin(admin.ModelAdmin):
     search_fields = ('list_id', 'category', 'true_answer')
     list_filter = ('list_id',)
     actions = ['delete_selected_dates', 'delete_range_list_ids']
-    
-    # Bu action_form barcha actionlar uchun qo'shimcha maydon sifatida ishlaydi
-    action_form = MappingDataActionForm
+    action_form = MappingDataActionForm  # Standart ActionForm asosida forma
 
-    # Avvalgi tanlangan obyektlarni o'chirish actioni
     def delete_selected_dates(self, request, queryset):
         count = queryset.count()
         queryset.delete()
         self.message_user(request, f"{count} ta malumot muvaffaqiyatli o'chirildi.")
     delete_selected_dates.short_description = 'Tanlangan barcha malumotlarni o‘chirish'
 
-    # Yangi action: kiritilgan list_id oralig'idagi barcha malumotlarni o'chirish
     def delete_range_list_ids(self, request, queryset):
         start_list_id = request.POST.get('start_list_id')
         end_list_id = request.POST.get('end_list_id')
@@ -46,7 +43,6 @@ class Mapping_DataAdmin(admin.ModelAdmin):
             )
             return
 
-        # Berilgan oralig'idagi barcha malumotlarni tanlab olish (tanlangan obyektlardan mustaqil)
         qs = Mapping_Data.objects.filter(list_id__gte=start_list_id, list_id__lte=end_list_id)
         count = qs.count()
         qs.delete()
