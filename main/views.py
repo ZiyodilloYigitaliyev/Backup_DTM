@@ -44,10 +44,27 @@ class ResultDataCreateAPIView(APIView):
                 question_class=question_class_val
             )
 
+            # Yaratilgan Data yozuvlarini saqlash uchun lug'at va takroriy orderlar uchun to'plam
+            order_to_data = {}
+            duplicate_orders = set()
+
             # Har bir data elementini saqlash
             for item in data_items:
                 order_value = item.get('order')
                 value_val = item.get('value')
+                
+                # Agar ushbu order allaqachon duplicate deb belgilangan bo'lsa, yangi yozuv yaratmaymiz
+                if order_value in duplicate_orders:
+                    continue
+
+                # Agar order avval yaratilgan bo'lsa, duplicate aniqlangan:
+                if order_value in order_to_data:
+                    # Avval yaratilgan yozuvni o'chirib tashlaymiz
+                    existing_record = order_to_data[order_value]
+                    existing_record.delete()
+                    del order_to_data[order_value]
+                    duplicate_orders.add(order_value)
+                    continue
 
                 try:
                     mapping_obj = Mapping_Data.objects.get(list_id=user_id_val, order=order_value)
@@ -60,7 +77,7 @@ class ResultDataCreateAPIView(APIView):
                     subject_val = None
                     status_val = False
 
-                Data.objects.create(
+                new_record = Data.objects.create(
                     user_id=result_instance,
                     order=order_value,
                     value=value_val,
@@ -68,6 +85,7 @@ class ResultDataCreateAPIView(APIView):
                     subject=subject_val,  # yangi maydon
                     status=status_val
                 )
+                order_to_data[order_value] = new_record
 
             # PDF uchun ma'lumotlarni yig'ish
             pdf_data = {
@@ -97,6 +115,7 @@ class ResultDataCreateAPIView(APIView):
             )
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ResultDataByDateRetrieveAPIView(APIView):
     """
